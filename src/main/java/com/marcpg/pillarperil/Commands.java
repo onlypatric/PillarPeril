@@ -158,8 +158,20 @@ public class Commands {
                                                 return 1;
                                             }
 
-                                            lobby.join(player);
-                                            source.sendMessage(Translation.component(l, "games.lobby.join.success").color(NamedTextColor.GREEN));
+                                            Lobby.JoinResult result = lobby.join(player);
+                                            Component response = switch (result) {
+                                                case SUCCESS ->
+                                                        Translation.component(l, "games.lobby.join.success").color(NamedTextColor.GREEN);
+                                                case FULL ->
+                                                        Translation.component(l, "games.lobby.join.full").color(NamedTextColor.RED);
+                                                case DISABLED ->
+                                                        Translation.component(l, "games.lobby.join.disabled").color(NamedTextColor.RED);
+                                                case IN_GAME ->
+                                                        Translation.component(l, "games.lobby.join.lobby_in_game").color(NamedTextColor.RED);
+                                                case ALREADY_PRESENT ->
+                                                        Translation.component(l, "games.lobby.join.already_in_lobby").color(NamedTextColor.YELLOW);
+                                            };
+                                            source.sendMessage(response);
                                             return 1;
                                         })
                                 )
@@ -260,7 +272,7 @@ public class Commands {
                                 )
                         )
                 )
-                .then(LiteralArgumentBuilder.<CommandSourceStack>literal("set-endspawn")
+                        .then(LiteralArgumentBuilder.<CommandSourceStack>literal("set-endspawn")
                         .requires(source -> source.getSender().hasPermission("pillarperil.endspawn.set"))
                         .executes(context -> {
                             CommandSender source = context.getSource().getSender();
@@ -306,6 +318,30 @@ public class Commands {
                                     }
                                     return 1;
                                 })
+                        )
+                        .then(LiteralArgumentBuilder.<CommandSourceStack>literal("setspawn")
+                                .requires(source -> source.getSender().hasPermission("pillarperil.lobby.setspawn"))
+                                .then(RequiredArgumentBuilder.<CommandSourceStack, String>argument("id", StringArgumentType.word())
+                                        .executes(context -> {
+                                            CommandSender source = context.getSource().getSender();
+                                            if (!(source instanceof Player player)) {
+                                                source.sendMessage(Component.text("Only players can set lobby spawn.", NamedTextColor.RED));
+                                                return 1;
+                                            }
+
+                                            Locale l = PillarPeril.locale(source);
+                                            String id = context.getArgument("id", String.class);
+                                            Lobby lobby = LobbyManager.lobby(id);
+                                            if (lobby == null) {
+                                                source.sendMessage(Translation.component(l, "games.lobby.join.not_found").color(NamedTextColor.RED));
+                                                return 1;
+                                            }
+
+                                            lobby.setLobbySpawn(player.getLocation());
+                                            source.sendMessage(Translation.component(l, "games.lobby.setspawn.success").color(NamedTextColor.GREEN));
+                                            return 1;
+                                        })
+                                )
                         )
                 )
                 .then(LiteralArgumentBuilder.<CommandSourceStack>literal("leaderboard")

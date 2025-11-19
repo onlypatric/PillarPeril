@@ -120,3 +120,4 @@ run/
 !gradle-wrapper.jar
 .vscode/settings.json
 GAME_FEATURES_GUIDE.md
+LOBBY_ENHANCEMENTS_PLAN.md

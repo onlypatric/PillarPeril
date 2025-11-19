@@ -4,11 +4,13 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.marcpg.libpg.lang.Translation;
 import com.marcpg.pillarperil.event.GameEvents;
-import com.marcpg.pillarperil.event.PlayerEvents;
 import com.marcpg.pillarperil.event.LobbyEvents;
+import com.marcpg.pillarperil.event.LobbyHotbarListener;
+import com.marcpg.pillarperil.event.PlayerEvents;
 import com.marcpg.pillarperil.game.Game;
 import com.marcpg.pillarperil.game.util.GameManager;
 import com.marcpg.pillarperil.game.util.StatsManager;
+import com.marcpg.pillarperil.game.util.LobbyStorage;
 import com.marcpg.pillarperil.generation.Generator;
 import com.marcpg.pillarperil.generation.Platform;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
@@ -58,6 +60,7 @@ public class PillarPeril extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new GameEvents(), this);
         getServer().getPluginManager().registerEvents(new PlayerEvents(), this);
         getServer().getPluginManager().registerEvents(new LobbyEvents(), this);
+        getServer().getPluginManager().registerEvents(new LobbyHotbarListener(), this);
 
         Platform.platformHeight = CONFIG.getInt("platform-height");
         Platform.deathHeight = Platform.platformHeight - CONFIG.getInt("max-fall");
@@ -65,12 +68,14 @@ public class PillarPeril extends JavaPlugin {
 
         END_SPAWN = loadEndSpawn();
         StatsManager.load(getDataFolder());
+        LobbyStorage.loadAll(getDataFolder());
     }
 
     @Override
     public void onDisable() {
         // Need to create copy, because you can't loop over a list while removing values from it.
         List.copyOf(GameManager.GAMES).forEach(game -> game.end(Game.EndingCause.FORCE, List.of()));
+        LobbyStorage.saveAll(getDataFolder());
         StatsManager.save(getDataFolder());
     }
 

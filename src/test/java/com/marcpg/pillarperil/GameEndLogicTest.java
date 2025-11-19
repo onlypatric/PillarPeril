@@ -29,6 +29,9 @@ class GameEndLogicTest {
     @BeforeEach
     void setUp() {
         server = MockBukkit.mock();
+        com.marcpg.pillarperil.generation.Platform.platformHeight = 20;
+        com.marcpg.pillarperil.generation.Platform.deathHeight = 0;
+        TestTranslations.ensure();
     }
 
     @AfterEach

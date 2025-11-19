@@ -24,6 +24,7 @@ public class PillarPlayer implements ForwardingAudience.Single {
 
     public final Player player;
     public final Game game;
+    private final com.marcpg.pillarperil.game.Lobby originLobby;
 
     private int kills = 0;
 
@@ -37,6 +38,7 @@ public class PillarPlayer implements ForwardingAudience.Single {
     public PillarPlayer(Player player, Game game) {
         this.player = player;
         this.game = game;
+        this.originLobby = game == null ? null : game.originLobby();
 
         PlayerInventory inv = player.getInventory();
         this.previousContents = inv.getContents().clone();
@@ -110,7 +112,11 @@ public class PillarPlayer implements ForwardingAudience.Single {
     public void clean() {
         player.setScoreboard(SCOREBOARD_MANAGER.getMainScoreboard());
         player.clearActivePotionEffects();
-        player.teleport(PillarPeril.endSpawn(game.world));
+        if (originLobby != null) {
+            player.teleport(originLobby.lobbySpawn());
+        } else {
+            player.teleport(PillarPeril.endSpawn(game.world));
+        }
         player.setGameMode(GameMode.SURVIVAL);
 
         PlayerInventory inv = player.getInventory();

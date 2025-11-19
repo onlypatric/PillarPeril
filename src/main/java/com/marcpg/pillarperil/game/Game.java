@@ -38,6 +38,7 @@ public abstract class Game {
     protected final List<PillarPlayer> players = new ArrayList<>();
     protected final Map<Location, BlockData> initialBlocks = new HashMap<>();
     protected List<Material> items;
+    protected Lobby originLobby;
 
     protected long itemCooldown = info().itemCooldown();
     protected final Time timeLeft = new Time(info().timeLimit());
@@ -61,7 +62,8 @@ public abstract class Game {
         this.initialAudience = Audience.audience(initialPlayers);
         //noinspection removal
         this.items = Arrays.stream(Material.values())
-                .filter(m -> !m.isAir() && !m.isLegacy() && m.isItem() && m.isEnabledByFeature(world) && info().filter().test(m))
+                .filter(m -> isAllowedMaterial(m, world))
+                .filter(info().filter()::test)
                 .toList();
 
         try {
@@ -156,6 +158,9 @@ public abstract class Game {
     public void end(@NotNull EndingCause cause, List<PillarPlayer> winners) {
         if (ended) return;
         ended = true;
+        if (originLobby != null) {
+            originLobby.onGameEnded(this);
+        }
 
         for (PillarPlayer p : initialPlayers) {
             Locale l = p.locale();
@@ -206,5 +211,49 @@ public abstract class Game {
 
     public static boolean hasUse(@NotNull Material m) {
         return m.isSolid();
+    }
+
+    public void setOriginLobby(@Nullable Lobby lobby) {
+        this.originLobby = lobby;
+    }
+
+    public @Nullable Lobby originLobby() {
+        return originLobby;
+    }
+
+    private static boolean isAllowedMaterial(Material material, World world) {
+        return !isAirSafe(material) && !isLegacySafe(material) && isItemSafe(material) && isMaterialEnabled(material, world);
+    }
+
+    private static boolean isMaterialEnabled(Material material, World world) {
+        try {
+            return material.isEnabledByFeature(world);
+        } catch (RuntimeException e) {
+            return true;
+        }
+    }
+
+    private static boolean isAirSafe(Material material) {
+        try {
+            return material.isAir();
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    private static boolean isLegacySafe(Material material) {
+        try {
+            return material.isLegacy();
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    private static boolean isItemSafe(Material material) {
+        try {
+            return material.isItem();
+        } catch (RuntimeException e) {
+            return true;
+        }
     }
 }

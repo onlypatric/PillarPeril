@@ -60,7 +60,13 @@ public class LobbyEvents implements Listener {
             return;
         }
 
-        lobby.join(player);
-        player.sendMessage(Translation.component(l, "games.lobby.join.success").color(NamedTextColor.GREEN));
+        Lobby.JoinResult result = lobby.join(player);
+        switch (result) {
+            case SUCCESS -> player.sendMessage(Translation.component(l, "games.lobby.join.success").color(NamedTextColor.GREEN));
+            case FULL -> player.sendMessage(Translation.component(l, "games.lobby.join.full").color(NamedTextColor.RED));
+            case DISABLED -> player.sendMessage(Translation.component(l, "games.lobby.join.disabled").color(NamedTextColor.RED));
+            case IN_GAME -> player.sendMessage(Translation.component(l, "games.lobby.join.lobby_in_game").color(NamedTextColor.RED));
+            case ALREADY_PRESENT -> player.sendMessage(Translation.component(l, "games.lobby.join.already_in_lobby").color(NamedTextColor.YELLOW));
+        }
     }
 }

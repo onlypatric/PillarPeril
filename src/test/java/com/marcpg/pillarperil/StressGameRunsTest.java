@@ -2,8 +2,10 @@ package com.marcpg.pillarperil;
 
 import com.marcpg.libpg.data.time.Time;
 import com.marcpg.pillarperil.game.Game;
+import com.marcpg.pillarperil.game.Lobby;
 import com.marcpg.pillarperil.game.util.GameInfo;
 import com.marcpg.pillarperil.game.util.GameManager;
+import com.marcpg.pillarperil.game.util.LobbyManager;
 import com.marcpg.pillarperil.generation.Generator;
 import com.marcpg.pillarperil.generation.Platform;
 import com.marcpg.pillarperil.generation.generator.CircularPillarGen;
@@ -14,6 +16,7 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,11 +27,15 @@ import org.mockbukkit.mockbukkit.entity.PlayerMock;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.HashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class StressGameRunsTest {
     private ServerMock server;
@@ -36,6 +43,10 @@ class StressGameRunsTest {
     @BeforeEach
     void setUp() {
         server = MockBukkit.mock();
+        com.marcpg.pillarperil.generation.Platform.platformHeight = 20;
+        com.marcpg.pillarperil.generation.Platform.deathHeight = 0;
+        com.marcpg.pillarperil.generation.Generator.platformDistanceFactor = 5.0;
+        TestTranslations.ensure();
     }
 
     @AfterEach
@@ -68,7 +79,9 @@ class StressGameRunsTest {
             List<Location> modified = new ArrayList<>();
             for (int j = 0; j < 5; j++) {
                 // Unique location per (game, j) well away from the arena.
-                Location loc = new Location(world, 1000 + i, 70 + j, 1000 + i + j);
+                double safeX = Math.min(1000 + i, world.getWorldBorder().getSize() / 2 - 10);
+                double safeZ = Math.min(1000 + i + j, world.getWorldBorder().getSize() / 2 - 10);
+                Location loc = new Location(world, safeX, Math.min(70 + j, world.getMaxHeight() - 1), safeZ);
                 loc.getBlock().setType(Material.STONE);
                 modified.add(loc);
 
@@ -124,9 +137,9 @@ class StressGameRunsTest {
 
         int baseGames = GameManager.GAMES.size();
 
-        // Simulate the configuration that would normally be applied in PillarPeril.onEnable()
-        Platform.platformHeight = 200;
-        Platform.deathHeight = Platform.platformHeight - 25;
+        int maxHeight = world.getMaxHeight();
+        Platform.platformHeight = Math.min(200, maxHeight - 5);
+        Platform.deathHeight = Math.max(0, Platform.platformHeight - 25);
         Generator.platformDistanceFactor = 10.0;
 
         // Create 50 players for a large game, giving each some initial inventory and experience.
@@ -180,7 +193,7 @@ class StressGameRunsTest {
         // Choose a bunch of locations around the arena to modify during the game
         List<Location> modifiedLocations = new ArrayList<>();
         for (int i = 0; i < players.size(); i++) {
-            Location loc = new Location(world, 500 + i, 70, 500 - i);
+            Location loc = new Location(world, Math.min(1000 + i, world.getWorldBorder().getSize() / 2 - 10), 70, Math.max(500 - i, -world.getWorldBorder().getSize() / 2 + 10));
             loc.getBlock().setType(Material.STONE);
             modifiedLocations.add(loc);
 
@@ -243,6 +256,108 @@ class StressGameRunsTest {
         assertEquals(baseGames, GameManager.GAMES.size());
     }
 
+    private LobbySimGame waitForLobbyGameStart(Lobby lobby) {
+        LobbySimGame started = null;
+        for (int tick = 0; tick < 400; tick++) {
+            lobby.tick(tick);
+            if (lobby.currentGame() instanceof LobbySimGame sim) {
+                started = sim;
+                break;
+            }
+        }
+        return started;
+    }
+
+    private int countMaterial(PlayerMock player, Material material) {
+        int total = 0;
+        for (ItemStack stack : player.getInventory().getContents()) {
+            if (stack != null && stack.getType() == material) {
+                total += stack.getAmount();
+            }
+        }
+        return total;
+    }
+
+    @Test
+    void persistentLobbiesHandleMultipleLargeGames() {
+        World world = server.addSimpleWorld("lobby_world");
+        int baseLobbies = LobbyManager.LOBBIES.size();
+
+        List<Lobby> lobbies = new ArrayList<>();
+        List<List<PlayerMock>> lobbyPlayers = new ArrayList<>();
+        Map<PlayerMock, Integer> expectedDiamonds = new HashMap<>();
+        Map<PlayerMock, Integer> expectedLevels = new HashMap<>();
+
+        for (int lobbyIndex = 0; lobbyIndex < 3; lobbyIndex++) {
+            Location center = new Location(world, lobbyIndex * 120.0, 70.0, lobbyIndex * 40.0);
+            Lobby lobby = new Lobby(center, 10, 20, 2L, "lobby-stress", LobbySimGame.class);
+            lobby.setLobbySpawn(center.clone().add(0, 2, 0));
+            lobbies.add(lobby);
+
+            List<PlayerMock> players = new ArrayList<>();
+            for (int p = 0; p < 20; p++) {
+                PlayerMock player = server.addPlayer("L" + lobbyIndex + "P" + p);
+                players.add(player);
+                int diamonds = (p % 4) + 1;
+                expectedDiamonds.put(player, diamonds);
+                expectedLevels.put(player, p % 7);
+                player.getInventory().clear();
+                player.getInventory().addItem(new ItemStack(Material.DIAMOND, diamonds));
+                player.setLevel(expectedLevels.get(player));
+                player.setExp(0.5f);
+
+                assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(player));
+                assertNotNull(player.getScoreboard().getObjective("pp_lobby"));
+            }
+            lobbyPlayers.add(players);
+        }
+
+        assertTrue(LobbyManager.LOBBIES.containsAll(lobbies));
+
+        for (int round = 0; round < 3; round++) {
+            for (int lobbyIndex = 0; lobbyIndex < lobbies.size(); lobbyIndex++) {
+                Lobby lobby = lobbies.get(lobbyIndex);
+                List<PlayerMock> players = lobbyPlayers.get(lobbyIndex);
+
+                if (round > 0) {
+                    PlayerMock tempLeave = players.get(round - 1);
+                    lobby.leave(tempLeave);
+                    assertTrue(tempLeave.getInventory().containsAtLeast(new ItemStack(Material.DIAMOND, expectedDiamonds.get(tempLeave)), 1));
+                    assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(tempLeave));
+                }
+
+                players.forEach(player -> assertTrue(lobby.toggleReady(player)));
+                LobbySimGame game = waitForLobbyGameStart(lobby);
+                assertNotNull(game, "Lobby did not start a game for lobby index " + lobbyIndex + " round " + round);
+
+                game.simulateRoundDamage(round);
+                for (int tick = 0; tick < 100; tick++) {
+                    game.tick(tick);
+                }
+
+                assertEquals(Lobby.LobbyState.IN_GAME, lobby.state());
+                game.end(Game.EndingCause.FORCE, List.of());
+                assertEquals(Lobby.LobbyState.WAITING, lobby.state());
+                assertNull(lobby.currentGame());
+
+                Location spawn = lobby.lobbySpawn();
+                for (PlayerMock player : players) {
+                    Location loc = player.getLocation();
+                    assertEquals(spawn.getBlockX(), loc.getBlockX(), "Player not returned to lobby spawn X after round");
+                    assertEquals(spawn.getBlockZ(), loc.getBlockZ(), "Player not returned to lobby spawn Z after round");
+                    assertEquals(spawn.getBlockY(), loc.getBlockY(), "Player not returned to lobby spawn Y after round");
+                    assertEquals(expectedDiamonds.get(player), countMaterial(player, Material.DIAMOND), "Diamonds not restored for " + player.getName());
+                    assertEquals(expectedLevels.get(player), player.getLevel(), "Level not restored for " + player.getName());
+                    assertNotNull(player.getScoreboard().getObjective("pp_lobby"), "Lobby scoreboard missing after round");
+                }
+            }
+        }
+
+        assertEquals(0, GameManager.GAMES.size(), "Games leaked after lobby stress test");
+        LobbyManager.LOBBIES.removeAll(lobbies);
+        assertEquals(baseLobbies, LobbyManager.LOBBIES.size());
+    }
+
     /**
      * Minimal Game subclass for stress-testing cleanup over many runs.
      */
@@ -295,6 +410,44 @@ class StressGameRunsTest {
         public void end(@NotNull EndingCause cause, List<PillarPlayer> winners) {
             // Bypass titles / translations / stats; just cleanup to test arena regen + lifecycle.
             cleanup();
+        }
+    }
+
+    private static class LobbySimGame extends Game {
+        private static final GameInfo INFO = new GameInfo(
+                "lobby-sim",
+                5,
+                Time.parse("5min"),
+                NamedTextColor.LIGHT_PURPLE,
+                CircularPillarGen.class,
+                BlockPlatform.class,
+                m -> true
+        );
+
+        LobbySimGame(Location center, int startTick, List<org.bukkit.entity.Player> players) {
+            super(center, startTick, players);
+        }
+
+        @Override
+        public GameInfo info() {
+            return INFO;
+        }
+
+        void simulateRoundDamage(int round) {
+            int index = 0;
+            for (PillarPlayer pillar : players) {
+                Location loc = pillar.player.getLocation().clone().add(round, 2 + (index % 3), -round);
+                loc.getBlock().setType(Material.STONE);
+                addBlock(loc, loc.getBlock().getBlockData());
+                Material newType = switch ((round + index) % 4) {
+                    case 0 -> Material.WATER;
+                    case 1 -> Material.LAVA;
+                    case 2 -> Material.COBBLESTONE;
+                    default -> Material.AIR;
+                };
+                loc.getBlock().setType(newType);
+                index++;
+            }
         }
     }
 }
