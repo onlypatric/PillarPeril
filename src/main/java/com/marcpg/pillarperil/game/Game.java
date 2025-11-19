@@ -8,6 +8,8 @@ import com.marcpg.pillarperil.PillarPlayer;
 import com.marcpg.pillarperil.game.util.GameInfo;
 import com.marcpg.pillarperil.game.util.GameManager;
 import com.marcpg.pillarperil.generation.Platform;
+
+import io.papermc.paper.world.flag.FeatureFlagSetHolder;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -25,7 +27,7 @@ import javax.annotation.OverridingMethodsMustInvokeSuper;
 import java.util.*;
 
 public abstract class Game {
-    public enum EndingCause { FORCE, TIME_OVER, LAST_STANDING }
+    public enum EndingCause { FORCE, TIME_OVER, LAST_STANDING, DRAW }
 
     public final String id = Randomizer.generateRandomString(10, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
     public final Location center;
@@ -39,10 +41,12 @@ public abstract class Game {
 
     protected long itemCooldown = info().itemCooldown();
     protected final Time timeLeft = new Time(info().timeLimit());
+    private boolean ended = false;
 
     protected final Style keyStyle = Style.style(info().accentColor(), TextDecoration.BOLD);
     protected final Style valueStyle = Style.style(NamedTextColor.WHITE, TextDecoration.BOLD.withState(false));
 
+    @SuppressWarnings("removal")
     public Game(@NotNull Location center, int startTick, @NotNull List<Player> players) {
         this.center = center.clone();
         this.center.setY(Platform.platformHeight + 1);
@@ -50,12 +54,6 @@ public abstract class Game {
         this.world = center.getWorld();
 
         players.stream()
-                .peek(p -> {
-                    p.setGameMode(GameMode.SURVIVAL);
-                    p.clearActivePotionEffects();
-                    p.getInventory().clear();
-                    p.setHealth(20.0);
-                })
                 .map(player -> new PillarPlayer(player, this))
                 .peek(this.initialPlayers::add)
                 .forEach(this.players::add);
@@ -122,11 +120,9 @@ public abstract class Game {
         players.remove(player);
 
         Bukkit.getScheduler().runTaskLater(PillarPeril.PLUGIN, () -> {
-            if (players.size() == 1) {
-                end(EndingCause.LAST_STANDING, List.of(players.getFirst()));
-            }
             player.player.teleport(center);
             player.player.setGameMode(GameMode.SPECTATOR);
+            checkEndCondition();
         }, 20);
     }
 
@@ -158,6 +154,9 @@ public abstract class Game {
     }
 
     public void end(@NotNull EndingCause cause, List<PillarPlayer> winners) {
+        if (ended) return;
+        ended = true;
+
         for (PillarPlayer p : initialPlayers) {
             Locale l = p.locale();
             switch (cause) {
@@ -172,9 +171,31 @@ public abstract class Game {
                     }
                 }
                 case LAST_STANDING -> p.showTitle(Title.title(Translation.component(l, "info.end.last-standing.title", winners.getFirst().player.getName()).color(NamedTextColor.GREEN), Translation.component(l, "info.end.last-standing.subtitle", winners.getFirst().kills()).color(NamedTextColor.YELLOW)));
+                case DRAW -> {
+                    p.showTitle(Title.title(Translation.component(l, "info.end.draw.title").color(NamedTextColor.GOLD), Translation.component(l, "info.end.draw.subtitle").color(NamedTextColor.YELLOW)));
+
+                    p.sendMessage(Component.text("=== ").append(Translation.component(l, "info.end.time-over.stats", initialPlayers.size()).append(Component.text(" ===")).color(NamedTextColor.GOLD).decorate(TextDecoration.BOLD)));
+                    List<PillarPlayer> sortedPlayers = initialPlayers.stream().sorted(Comparator.comparingInt(PillarPlayer::kills)).toList();
+                    for (int i = 0; i < sortedPlayers.size(); i++) {
+                        p.sendMessage(Component.text(i + ". " + sortedPlayers.get(i).player.getName() + ": " + sortedPlayers.get(i).kills()));
+                    }
+                }
             }
         }
+        if (cause == EndingCause.LAST_STANDING) {
+            winners.forEach(com.marcpg.pillarperil.game.util.StatsManager::recordWin);
+        }
         cleanup();
+    }
+
+    private void checkEndCondition() {
+        if (ended) return;
+
+        if (players.size() == 1) {
+            end(EndingCause.LAST_STANDING, List.of(players.getFirst()));
+        } else if (players.isEmpty()) {
+            end(EndingCause.DRAW, List.of());
+        }
     }
 
     public void cleanup() {

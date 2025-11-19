@@ -5,12 +5,17 @@ import com.google.gson.reflect.TypeToken;
 import com.marcpg.libpg.lang.Translation;
 import com.marcpg.pillarperil.event.GameEvents;
 import com.marcpg.pillarperil.event.PlayerEvents;
+import com.marcpg.pillarperil.event.LobbyEvents;
 import com.marcpg.pillarperil.game.Game;
 import com.marcpg.pillarperil.game.util.GameManager;
+import com.marcpg.pillarperil.game.util.StatsManager;
 import com.marcpg.pillarperil.generation.Generator;
 import com.marcpg.pillarperil.generation.Platform;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.kyori.adventure.audience.Audience;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -31,6 +36,7 @@ public class PillarPeril extends JavaPlugin {
     public static PillarPeril PLUGIN;
     public static Logger LOG;
     public static FileConfiguration CONFIG;
+    private static Location END_SPAWN;
 
     @Override
     public void onEnable() {
@@ -51,16 +57,21 @@ public class PillarPeril extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new GameEvents(), this);
         getServer().getPluginManager().registerEvents(new PlayerEvents(), this);
+        getServer().getPluginManager().registerEvents(new LobbyEvents(), this);
 
         Platform.platformHeight = CONFIG.getInt("platform-height");
         Platform.deathHeight = Platform.platformHeight - CONFIG.getInt("max-fall");
         Generator.platformDistanceFactor = CONFIG.getDouble("platform-distance-factor");
+
+        END_SPAWN = loadEndSpawn();
+        StatsManager.load(getDataFolder());
     }
 
     @Override
     public void onDisable() {
         // Need to create copy, because you can't loop over a list while removing values from it.
         List.copyOf(GameManager.GAMES).forEach(game -> game.end(Game.EndingCause.FORCE, List.of()));
+        StatsManager.save(getDataFolder());
     }
 
     void translations() throws IOException {
@@ -79,5 +90,36 @@ public class PillarPeril extends JavaPlugin {
 
     public static Locale locale(Audience a) {
         return a instanceof Player p ? p.locale() : a instanceof PillarPlayer pp ? pp.locale() : Locale.getDefault();
+    }
+
+    public static void setEndSpawn(Location location) {
+        END_SPAWN = location == null ? null : location.clone();
+    }
+
+    private Location loadEndSpawn() {
+        String worldName = CONFIG.getString("end-spawn.world");
+        World world = worldName != null ? Bukkit.getWorld(worldName) : null;
+        if (world == null && !Bukkit.getWorlds().isEmpty()) {
+            world = Bukkit.getWorlds().get(0);
+        }
+        if (world == null) {
+            return null;
+        }
+
+        Location spawn = world.getSpawnLocation();
+        double x = CONFIG.getDouble("end-spawn.x", spawn.getX());
+        double y = CONFIG.getDouble("end-spawn.y", spawn.getY());
+        double z = CONFIG.getDouble("end-spawn.z", spawn.getZ());
+        float yaw = (float) CONFIG.getDouble("end-spawn.yaw", spawn.getYaw());
+        float pitch = (float) CONFIG.getDouble("end-spawn.pitch", spawn.getPitch());
+
+        return new Location(world, x, y, z, yaw, pitch);
+    }
+
+    public static Location endSpawn(World fallbackWorld) {
+        if (END_SPAWN != null) {
+            return END_SPAWN.clone();
+        }
+        return fallbackWorld.getSpawnLocation();
     }
 }

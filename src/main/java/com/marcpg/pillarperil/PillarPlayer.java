@@ -11,6 +11,7 @@ import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.scoreboard.*;
 import org.jetbrains.annotations.NotNull;
 
@@ -26,9 +27,29 @@ public class PillarPlayer implements ForwardingAudience.Single {
 
     private int kills = 0;
 
+    private final ItemStack[] previousContents;
+    private final ItemStack[] previousArmorContents;
+    private final ItemStack[] previousExtraContents;
+    private final float previousExp;
+    private final int previousLevel;
+    private final int previousTotalExp;
+
     public PillarPlayer(Player player, Game game) {
         this.player = player;
         this.game = game;
+
+        PlayerInventory inv = player.getInventory();
+        this.previousContents = inv.getContents().clone();
+        this.previousArmorContents = inv.getArmorContents().clone();
+        this.previousExtraContents = inv.getExtraContents().clone();
+        this.previousExp = player.getExp();
+        this.previousLevel = player.getLevel();
+        this.previousTotalExp = player.getTotalExperience();
+
+        player.setGameMode(GameMode.SURVIVAL);
+        player.clearActivePotionEffects();
+        player.getInventory().clear();
+        player.setHealth(20.0);
     }
 
     public void giveItem(List<Material> availableItems) {
@@ -88,9 +109,16 @@ public class PillarPlayer implements ForwardingAudience.Single {
 
     public void clean() {
         player.setScoreboard(SCOREBOARD_MANAGER.getMainScoreboard());
-        player.getInventory().clear();
         player.clearActivePotionEffects();
-        player.teleport(game.world.getSpawnLocation());
-        player.setGameMode(GameMode.ADVENTURE);
+        player.teleport(PillarPeril.endSpawn(game.world));
+        player.setGameMode(GameMode.SURVIVAL);
+
+        PlayerInventory inv = player.getInventory();
+        inv.setContents(previousContents);
+        inv.setArmorContents(previousArmorContents);
+        inv.setExtraContents(previousExtraContents);
+        player.setExp(previousExp);
+        player.setLevel(previousLevel);
+        player.setTotalExperience(previousTotalExp);
     }
 }

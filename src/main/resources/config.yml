@@ -31,6 +31,16 @@ max-fall: 25
 # Default: 10.0
 platform-distance-factor: 10.0
 
+## End Spawn ##
+# Location players are teleported to after a game ends.
+end-spawn:
+  world: world
+  x: 0.5
+  y: 80.0
+  z: 0.5
+  yaw: 0.0
+  pitch: 0.0
+
 
 ## Default Game Modes ##
 # Allows you to configure various properties of the default game modes.

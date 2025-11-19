@@ -3,6 +3,7 @@ package com.marcpg.pillarperil.event;
 import com.marcpg.pillarperil.PillarPlayer;
 import com.marcpg.pillarperil.game.Game;
 import com.marcpg.pillarperil.game.util.GameManager;
+import com.marcpg.pillarperil.game.util.StatsManager;
 import com.marcpg.pillarperil.generation.Platform;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -17,7 +18,10 @@ public class PlayerEvents implements Listener {
         if (player != null) {
             if (player.player.getKiller() != null) {
                 PillarPlayer killer = player.game.player(player.player.getKiller(), false);
-                if (killer != null) killer.addKill();
+                if (killer != null) {
+                    killer.addKill();
+                    StatsManager.recordKill(killer);
+                }
             }
 
             player.game.eliminate(player);

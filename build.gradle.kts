@@ -15,14 +15,15 @@ repositories {
     mavenLocal()
     mavenCentral()
 
-    maven("https://marcpg.com/repo/")
     maven("https://s01.oss.sonatype.org/content/repositories/snapshots/")
     maven("https://repo.papermc.io/repository/maven-public/")
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.5-R0.1-SNAPSHOT")
-    implementation("com.marcpg:libpg:0.1.3")
+    implementation(files("external-libs/LibPG-0.2.0.jar")) // local jar for the custom LibPG version
+    testImplementation("org.mockbukkit.mockbukkit:mockbukkit-v1.21:4.0.0")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
 }
 
 tasks {
@@ -44,5 +45,8 @@ tasks {
         filter {
             it.replace("\${version}", version.toString())
         }
+    }
+    test {
+        useJUnitPlatform()
     }
 }
