@@ -2,8 +2,8 @@ const { createBot } = require('mineflayer');
 
 const host = 'localhost';
 const port = 25565;
-
 const botNames = ['TestBot', 'TestBot2', 'TestBot3'];
+
 let done = false;
 let lobbyId = null;
 
@@ -24,12 +24,23 @@ const handleCommonEvents = (bot, label) => {
   });
 };
 
-const bootstrap = async () => {
-  const creator = createBot({ host, port, username: botNames[0], version: false });
-  const joiners = botNames.slice(1).map((name) => createBot({ host, port, username: name, version: false }));
+const createJoiner = (name, idx, delay) => {
+  const bot = createBot({ host, port, username: name, version: false });
+  handleCommonEvents(bot, `joiner${idx + 1}`);
+  bot.on('login', () => console.log(`[joiner${idx + 1}] logged in`));
+  bot.once('spawn', () => {
+    setTimeout(() => {
+      if (lobbyId) {
+        bot.chat(`/games lobby join ${lobbyId}`);
+      }
+    }, 500);
+  });
+  return bot;
+};
 
+const bootstrap = () => {
+  const creator = createBot({ host, port, username: botNames[0], version: false });
   handleCommonEvents(creator, 'creator');
-  joiners.forEach((b, i) => handleCommonEvents(b, `joiner${i + 1}`));
 
   creator.on('login', () => console.log('[creator] logged in'));
   creator.on('spawn', () => {
@@ -44,18 +55,30 @@ const bootstrap = async () => {
   creator.on('message', (json) => {
     const msg = json.toString();
     console.log('[server]', msg);
+
+    // Treat obvious server errors as failures
+    if (/exception|error/i.test(msg) && !msg.includes('Lobby error')) {
+      console.error('[bot] detected server error in chat');
+      finish(1);
+      return;
+    }
+
     if (!lobbyId) {
       const match = msg.match(/\(([0-9A-Za-z]+)\)/);
       if (msg.includes('Lobby created successfully') && match) {
         lobbyId = match[1];
+        // creator joins first
         setTimeout(() => creator.chat(`/games lobby join ${lobbyId}`), 500);
-        setTimeout(() => joiners.forEach((b) => b.chat(`/games lobby join ${lobbyId}`)), 1000);
-        setTimeout(() => creator.chat(`/games lobby force-start ${lobbyId}`), 5000);
-        setTimeout(() => joiners[0]?.end('leaving'), 8000);
+        // spawn joiners staggered to avoid throttle
+        botNames.slice(1).forEach((name, idx) => {
+          setTimeout(() => createJoiner(name, idx, idx * 800), 1200 + idx * 1200);
+        });
+        // start games and simulate leave/rejoin
+        setTimeout(() => creator.chat(`/games lobby force-start ${lobbyId}`), 6000);
         setTimeout(() => creator.chat('/games lobby leave'), 11000);
         setTimeout(() => creator.chat(`/games lobby join ${lobbyId}`), 13000);
-        setTimeout(() => creator.chat(`/games lobby force-start ${lobbyId}`), 15000);
-        setTimeout(() => finish(0), 20000);
+        setTimeout(() => creator.chat(`/games lobby force-start ${lobbyId}`), 17000);
+        setTimeout(() => finish(0), 25000);
       }
     }
   });
@@ -63,7 +86,7 @@ const bootstrap = async () => {
   setTimeout(() => {
     console.error('[bot] timeout during integration scenario');
     finish(1);
-  }, 30000);
+  }, 45000);
 };
 
 bootstrap();

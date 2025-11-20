@@ -59,9 +59,15 @@ jobs:
           enable-command-block=true
           max-players=5
           connection-throttle=-1
+          spawn-protection=0
+          enable-rcon=false
           view-distance=4
           motd=PillarPeril Integration Test
           PROPS
+          cat > integration-server/bukkit.yml <<'BKT'
+          settings:
+            connection-throttle: -1
+          BKT
           cp build/libs/*.jar integration-server/plugins/
           python -c "import json, hashlib, uuid, os; name='TestBot'; raw=hashlib.md5(('OfflinePlayer:' + name).encode('utf-8')).digest(); uid=uuid.UUID(bytes=raw, version=3); ops=[{'uuid': str(uid), 'name': name, 'level': 4, 'bypassesPlayerLimit': True}]; os.makedirs('integration-server', exist_ok=True); json.dump(ops, open('integration-server/ops.json','w',encoding='utf-8')); print('Created ops entry for', name, uid)"
 
@@ -84,6 +90,13 @@ jobs:
         run: |
           cd integration-server
           node ../scripts/integration/mineflayer-bot.js
+
+      - name: Upload server log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-server-log
+          path: integration-server/server.log
 
       - name: Stop Paper server
         if: always()
