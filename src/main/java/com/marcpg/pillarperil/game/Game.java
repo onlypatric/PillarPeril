@@ -151,6 +151,11 @@ public abstract class Game {
         timeLeft.decrement();
         if (timeLeft.get() <= 0)
             end(EndingCause.FORCE, List.of());
+
+        // Ensure end conditions trigger after eliminations
+        if (players.size() < initialPlayers.size()) {
+            checkEndCondition();
+        }
     }
 
     public void end(@NotNull EndingCause cause, List<PillarPlayer> winners) {
