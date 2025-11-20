@@ -206,6 +206,7 @@ public abstract class Game {
         }
         if (cause == EndingCause.LAST_STANDING || (cause == EndingCause.FORCE && !winnersToRecord.isEmpty())) {
             winnersToRecord.forEach(com.marcpg.pillarperil.game.util.StatsManager::recordWin);
+            PillarPeril.LOG.info("Game {} ended with winner {}", id, winnersToRecord.getFirst().player.getName());
         }
         cleanup();
     }
