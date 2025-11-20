@@ -185,8 +185,12 @@ public abstract class Game {
                 }
             }
         }
-        if (cause == EndingCause.LAST_STANDING) {
-            winners.forEach(com.marcpg.pillarperil.game.util.StatsManager::recordWin);
+        List<PillarPlayer> winnersToRecord = new ArrayList<>(winners);
+        if (winnersToRecord.isEmpty() && players.size() == 1) {
+            winnersToRecord.add(players.getFirst());
+        }
+        if (cause == EndingCause.LAST_STANDING || (cause == EndingCause.FORCE && !winnersToRecord.isEmpty())) {
+            winnersToRecord.forEach(com.marcpg.pillarperil.game.util.StatsManager::recordWin);
         }
         cleanup();
     }
