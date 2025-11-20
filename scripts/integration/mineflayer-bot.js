@@ -6,6 +6,7 @@ const botNames = ['TestBot', 'TestBot2', 'TestBot3'];
 
 let done = false;
 let lobbyId = null;
+const joinerStatus = {};
 
 const finish = (code) => {
   if (done) return;
@@ -32,6 +33,7 @@ const createJoiner = (name, idx, delay) => {
     setTimeout(() => {
       if (lobbyId) {
         bot.chat(`/games lobby join ${lobbyId}`);
+        joinerStatus[name] = 'joined';
       }
     }, 500);
   });
@@ -67,6 +69,7 @@ const bootstrap = () => {
       const match = msg.match(/\(([0-9A-Za-z]+)\)/);
       if (msg.includes('Lobby created successfully') && match) {
         lobbyId = match[1];
+        console.log('[bot] captured lobby id', lobbyId);
         // creator joins first
         setTimeout(() => creator.chat(`/games lobby join ${lobbyId}`), 500);
         // spawn joiners staggered to avoid throttle
