@@ -62,6 +62,17 @@ jobs:
           motd=PillarPeril Integration Test
           PROPS
           cp build/libs/*.jar integration-server/plugins/
+          python - <<'PY'
+            import json, hashlib, uuid, os
+            name = "TestBot"
+            raw = hashlib.md5(("OfflinePlayer:" + name).encode('utf-8')).digest()
+            uid = uuid.UUID(bytes=raw, version=3)
+            ops = [{"uuid": str(uid), "name": name, "level": 4, "bypassesPlayerLimit": True}]
+            os.makedirs("integration-server", exist_ok=True)
+            with open("integration-server/ops.json", "w", encoding="utf-8") as f:
+                json.dump(ops, f)
+            print("Created ops entry for", name, uid)
+          PY
 
       - name: Start Paper server
         run: |
