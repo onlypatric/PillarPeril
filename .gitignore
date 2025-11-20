@@ -118,6 +118,7 @@ run/
 
 # Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
 !gradle-wrapper.jar
+!external-libs/LibPG-0.2.0.jar
 .vscode/settings.json
 GAME_FEATURES_GUIDE.md
 LOBBY_ENHANCEMENTS_PLAN.md
