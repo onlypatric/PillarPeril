@@ -66,11 +66,11 @@ const bootstrap = () => {
   creator.on('message', (json) => {
     const msg = json.toString();
     console.log(`[${ts()}][server] ${msg}`);
-    if (msg.includes('Game') && msg.toLowerCase().contains('ended with winner')) {
+    if (msg.includes('Game') && msg.toLowerCase().includes('ended with winner')) {
       logAction('bot', `server reported winner line: ${msg}`);
     }
 
-    if (msg.contains('Game ') && msg.contains('started')) {
+    if (msg.includes('Game ') && msg.includes('started')) {
       botNames.slice(1).forEach((name, idx) => {
         const status = joinerStatus[name] || '??';
         logAction('bot', `${name} status ${status}`);
