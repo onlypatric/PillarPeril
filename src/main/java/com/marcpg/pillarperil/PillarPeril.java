@@ -11,6 +11,7 @@ import com.marcpg.pillarperil.game.Game;
 import com.marcpg.pillarperil.game.util.GameManager;
 import com.marcpg.pillarperil.game.util.StatsManager;
 import com.marcpg.pillarperil.game.util.LobbyStorage;
+import com.marcpg.pillarperil.game.util.LobbyManager;
 import com.marcpg.pillarperil.generation.Generator;
 import com.marcpg.pillarperil.generation.Platform;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
@@ -75,6 +76,8 @@ public class PillarPeril extends JavaPlugin {
     public void onDisable() {
         // Need to create copy, because you can't loop over a list while removing values from it.
         List.copyOf(GameManager.GAMES).forEach(game -> game.end(Game.EndingCause.FORCE, List.of()));
+        // Restore inventories for any players still sitting in lobbies to avoid wipes on shutdown.
+        LobbyManager.LOBBIES.forEach(lobby -> List.copyOf(lobby.players()).forEach(lobby::leave));
         LobbyStorage.saveAll(getDataFolder());
         StatsManager.save(getDataFolder());
     }

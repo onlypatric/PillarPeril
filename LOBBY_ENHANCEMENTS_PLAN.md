@@ -109,6 +109,7 @@ Define a simple, hard-coded layout for lobby players:
 - [x] On `Lobby.leave(...)`:
   - [x] Remove any lobby hotbar items (or restore previous inventory if you snapshot it for lobbies).
   - [x] Reset active countdown timers back to full duration whenever a new player joins mid-countdown, so late arrivals get the full timer.
+  - [x] On player quit or plugin shutdown, lobby inventory snapshots are restored to prevent loss.
 
 ### 2.3. Handling Hotbar Interactions
 

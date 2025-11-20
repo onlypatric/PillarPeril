@@ -84,6 +84,30 @@ class LobbyTest {
     }
 
     @Test
+    void waitingSpawnOverridesDefaultTeleport() {
+        World world = server.addSimpleWorld("world");
+        Location center = new Location(world, 0, 80, 0);
+
+        Lobby lobby = new Lobby(center, 1, 2, 5L, "test", DummyMode.class);
+        Location waiting = center.clone().add(10, 1, -5);
+        lobby.setWaitingSpawn(waiting);
+
+        PlayerMock player = server.addPlayer();
+        assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(player));
+        assertEquals(waiting.getBlockX(), player.getLocation().getBlockX());
+        assertEquals(waiting.getBlockY(), player.getLocation().getBlockY());
+        assertEquals(waiting.getBlockZ(), player.getLocation().getBlockZ());
+
+        // End a fake game to ensure returns to waiting spawn
+        lobby.forceStart();
+        assertNotNull(lobby.currentGame());
+        lobby.onGameEnded(lobby.currentGame());
+        assertEquals(waiting.getBlockX(), player.getLocation().getBlockX());
+        assertEquals(waiting.getBlockY(), player.getLocation().getBlockY());
+        assertEquals(waiting.getBlockZ(), player.getLocation().getBlockZ());
+    }
+
+    @Test
     void lobbyHotbarRestoresInventoryOnLeave() {
         World world = server.addSimpleWorld("world");
         Location center = new Location(world, 0, 80, 0);

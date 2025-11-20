@@ -262,8 +262,10 @@ public class Commands {
                                                 return 1;
                                             }
 
-                                            sign.getSide(Side.FRONT).line(0, Component.text("[PillarPeril]"));
-                                            sign.getSide(Side.FRONT).line(1, Component.text(id));
+                                            sign.getSide(Side.FRONT).line(0, Component.text("[PillarPeril]", NamedTextColor.AQUA));
+                                            sign.getSide(Side.FRONT).line(1, Component.text(id, NamedTextColor.GOLD));
+                                            sign.getSide(Side.FRONT).line(2, Component.text("Click to join", NamedTextColor.GREEN));
+                                            sign.getSide(Side.FRONT).line(3, Component.text("Players welcome", NamedTextColor.YELLOW));
                                             sign.update();
 
                                             source.sendMessage(Translation.component(l, "games.lobby.makesign.success").color(NamedTextColor.GREEN));
@@ -338,7 +340,32 @@ public class Commands {
                                             }
 
                                             lobby.setLobbySpawn(player.getLocation());
-                                            source.sendMessage(Translation.component(l, "games.lobby.setspawn.success").color(NamedTextColor.GREEN));
+                                                    source.sendMessage(Translation.component(l, "games.lobby.setspawn.success").color(NamedTextColor.GREEN));
+                                                    return 1;
+                                                })
+                                        )
+                                )
+                        .then(LiteralArgumentBuilder.<CommandSourceStack>literal("setwaiting")
+                                .requires(source -> source.getSender().hasPermission("pillarperil.lobby.setwaiting"))
+                                .then(RequiredArgumentBuilder.<CommandSourceStack, String>argument("id", StringArgumentType.word())
+                                        .executes(context -> {
+                                            CommandSender source = context.getSource().getSender();
+                                            if (!(source instanceof Player player)) {
+                                                source.sendMessage(Component.text("Only players can set waiting spawns.", NamedTextColor.RED));
+                                                return 1;
+                                            }
+
+                                            Locale l = PillarPeril.locale(source);
+
+                                            String id = context.getArgument("id", String.class);
+                                            Lobby lobby = LobbyManager.lobby(id);
+                                            if (lobby == null) {
+                                                source.sendMessage(Translation.component(l, "games.lobby.join.not_found").color(NamedTextColor.RED));
+                                                return 1;
+                                            }
+
+                                            lobby.setWaitingSpawn(player.getLocation());
+                                            source.sendMessage(Translation.component(l, "games.lobby.setwaiting.success").color(NamedTextColor.GREEN));
                                             return 1;
                                         })
                                 )

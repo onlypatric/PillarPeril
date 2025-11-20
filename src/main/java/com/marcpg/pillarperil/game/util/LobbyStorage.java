@@ -34,6 +34,7 @@ public final class LobbyStorage {
             sec.set("countdownSeconds", lobby.countdownSeconds());
             writeLocation(sec.createSection("center"), lobby.center());
             writeLocation(sec.createSection("spawn"), lobby.lobbySpawn());
+            writeLocation(sec.createSection("waitingSpawn"), lobby.waitingSpawn());
         }
 
         try {
@@ -62,6 +63,7 @@ public final class LobbyStorage {
             Location center = readLocation(sec.getConfigurationSection("center"));
             Location spawn = readLocation(sec.getConfigurationSection("spawn"));
             if (center == null || spawn == null) continue;
+            Location waiting = readLocation(sec.getConfigurationSection("waitingSpawn"));
 
             int minPlayers = sec.getInt("minPlayers", 2);
             int maxPlayers = sec.getInt("maxPlayers", Math.max(minPlayers, 2));
@@ -78,6 +80,9 @@ public final class LobbyStorage {
 
             Lobby lobby = new Lobby(id, center, minPlayers, maxPlayers, countdownSeconds, modeKey, modeClass);
             lobby.setLobbySpawn(spawn);
+            if (waiting != null) {
+                lobby.setWaitingSpawn(waiting);
+            }
         }
     }
 
@@ -105,4 +110,3 @@ public final class LobbyStorage {
         return new Location(world, x, y, z, yaw, pitch);
     }
 }
-

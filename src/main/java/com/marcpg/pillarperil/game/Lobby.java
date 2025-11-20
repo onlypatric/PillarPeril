@@ -3,6 +3,7 @@ package com.marcpg.pillarperil.game;
 import com.marcpg.libpg.data.time.Time;
 import com.marcpg.libpg.lang.Translation;
 import com.marcpg.libpg.util.Randomizer;
+import com.marcpg.pillarperil.PillarPeril;
 import com.marcpg.pillarperil.game.util.LobbyManager;
 import io.papermc.paper.scoreboard.numbers.NumberFormat;
 import net.kyori.adventure.text.Component;
@@ -48,7 +49,16 @@ public class Lobby {
 
     public enum HotbarAction { START, QUEUE, LEAVE }
 
-    private static final NamespacedKey HOTBAR_ACTION_KEY = new NamespacedKey("pillarperil", "lobby_hotbar_action");
+    private static NamespacedKey hotbarKey() {
+        if (PillarPeril.PLUGIN != null) {
+            return new NamespacedKey(PillarPeril.PLUGIN, "lobby_hotbar_action");
+        }
+        NamespacedKey key = NamespacedKey.fromString("pillarperil:lobby_hotbar_action");
+        if (key == null) {
+            key = NamespacedKey.minecraft("pillarperil_lobby_hotbar_action");
+        }
+        return key;
+    }
 
     private final String id;
     private final Location center;
@@ -57,6 +67,7 @@ public class Lobby {
     private final List<UUID> lastParticipants = new ArrayList<>();
     private final Map<UUID, InventorySnapshot> storedInventories = new HashMap<>();
     private final Set<UUID> readyPlayers = new HashSet<>();
+    private Location waitingSpawn;
     private Location lobbySpawn;
 
     private final String modeKey;
@@ -154,6 +165,14 @@ public class Lobby {
         this.lobbySpawn = newSpawn.clone();
     }
 
+    public Location waitingSpawn() {
+        return waitingSpawn != null ? waitingSpawn.clone() : lobbySpawn();
+    }
+
+    public void setWaitingSpawn(Location location) {
+        this.waitingSpawn = location == null ? null : location.clone();
+    }
+
     public JoinResult join(Player player) {
         if (state == LobbyState.DISABLED) return JoinResult.DISABLED;
         if (state == LobbyState.IN_GAME) return JoinResult.IN_GAME;
@@ -165,7 +184,7 @@ public class Lobby {
             countdown = new Time(countdownSeconds);
         }
         readyPlayers.remove(player.getUniqueId());
-        player.teleport(lobbySpawn);
+        player.teleport(waitingSpawn());
         applyHotbar(player);
         updateScoreboards();
         updateQueueItemsForAll();
@@ -358,7 +377,7 @@ public class Lobby {
             }
             for (Player player : players) {
                 if (player.isOnline()) {
-                    player.teleport(lobbySpawn);
+                    player.teleport(waitingSpawn());
                     applyHotbar(player);
                 }
             }
@@ -469,7 +488,7 @@ public class Lobby {
         ItemMeta meta = stack.getItemMeta();
         meta.displayName(displayName);
         meta.lore(lore);
-        meta.getPersistentDataContainer().set(HOTBAR_ACTION_KEY, PersistentDataType.STRING, action.name());
+        meta.getPersistentDataContainer().set(hotbarKey(), PersistentDataType.STRING, action.name());
         stack.setItemMeta(meta);
         return stack;
     }
@@ -509,7 +528,7 @@ public class Lobby {
             return null;
         }
         ItemMeta meta = stack.getItemMeta();
-        String actionName = meta.getPersistentDataContainer().get(HOTBAR_ACTION_KEY, PersistentDataType.STRING);
+        String actionName = meta.getPersistentDataContainer().get(hotbarKey(), PersistentDataType.STRING);
         if (actionName == null) {
             return null;
         }

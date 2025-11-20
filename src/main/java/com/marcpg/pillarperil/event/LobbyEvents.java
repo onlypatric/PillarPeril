@@ -6,6 +6,7 @@ import com.marcpg.pillarperil.game.util.LobbyManager;
 import com.marcpg.pillarperil.game.util.GameManager;
 import com.marcpg.pillarperil.game.Lobby;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
 import org.bukkit.block.sign.Side;
@@ -31,12 +32,13 @@ public class LobbyEvents implements Listener {
             return;
         }
 
-        String header = sign.getSide(Side.FRONT).line(0).toString();
-        if (!"[PillarPeril]".equals(header)) {
+        PlainTextComponentSerializer plain = PlainTextComponentSerializer.plainText();
+        String header = plain.serialize(sign.getSide(Side.FRONT).line(0));
+        if (!"[PillarPeril]".equalsIgnoreCase(header)) {
             return;
         }
 
-        String id = sign.getSide(Side.FRONT).line(1).toString();
+        String id = plain.serialize(sign.getSide(Side.FRONT).line(1));
         if (id == null || id.isBlank()) {
             return;
         }

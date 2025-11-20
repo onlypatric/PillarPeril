@@ -9,7 +9,6 @@ import com.marcpg.pillarperil.game.util.GameInfo;
 import com.marcpg.pillarperil.game.util.GameManager;
 import com.marcpg.pillarperil.generation.Platform;
 
-import io.papermc.paper.world.flag.FeatureFlagSetHolder;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -47,7 +46,6 @@ public abstract class Game {
     protected final Style keyStyle = Style.style(info().accentColor(), TextDecoration.BOLD);
     protected final Style valueStyle = Style.style(NamedTextColor.WHITE, TextDecoration.BOLD.withState(false));
 
-    @SuppressWarnings("removal")
     public Game(@NotNull Location center, int startTick, @NotNull List<Player> players) {
         this.center = center.clone();
         this.center.setY(Platform.platformHeight + 1);
@@ -225,6 +223,7 @@ public abstract class Game {
         return !isAirSafe(material) && !isLegacySafe(material) && isItemSafe(material) && isMaterialEnabled(material, world);
     }
 
+    @SuppressWarnings("removal")
     private static boolean isMaterialEnabled(Material material, World world) {
         try {
             return material.isEnabledByFeature(world);

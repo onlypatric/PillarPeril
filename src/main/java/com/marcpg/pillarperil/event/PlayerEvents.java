@@ -2,13 +2,16 @@ package com.marcpg.pillarperil.event;
 
 import com.marcpg.pillarperil.PillarPlayer;
 import com.marcpg.pillarperil.game.Game;
+import com.marcpg.pillarperil.game.Lobby;
 import com.marcpg.pillarperil.game.util.GameManager;
+import com.marcpg.pillarperil.game.util.LobbyManager;
 import com.marcpg.pillarperil.game.util.StatsManager;
 import com.marcpg.pillarperil.generation.Platform;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.jetbrains.annotations.NotNull;
 
 public class PlayerEvents implements Listener {
@@ -34,6 +37,14 @@ public class PlayerEvents implements Listener {
             Game game = GameManager.game(event.getPlayer(), true);
             if (game != null)
                 event.getPlayer().setHealth(0.0);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerQuit(@NotNull PlayerQuitEvent event) {
+        Lobby lobby = LobbyManager.lobby(event.getPlayer());
+        if (lobby != null) {
+            lobby.leave(event.getPlayer());
         }
     }
 }
