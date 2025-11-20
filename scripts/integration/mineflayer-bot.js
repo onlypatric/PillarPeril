@@ -65,7 +65,7 @@ const bootstrap = () => {
 
   creator.on('message', (json) => {
     const msg = json.toString();
-    console.log('[server]', msg);
+    console.log(`[${ts()}][server] ${msg}`);
 
     // Treat obvious server errors as failures
     if (/exception|error/i.test(msg) && !msg.includes('Lobby error')) {
@@ -93,9 +93,10 @@ const bootstrap = () => {
         // give a moment for game to start, then kill other bots to trigger win
         setTimeout(() => { logAction('creator', 'chat /kill TestBot2'); creator.chat('/kill TestBot2'); }, 12000);
         setTimeout(() => { logAction('creator', 'chat /kill TestBot3'); creator.chat('/kill TestBot3'); }, 14000);
-        // show leaderboard after win should be recorded
+        // show info/leaderboard after win should be recorded
         setTimeout(() => { logAction('creator', 'chat /games leaderboard'); creator.chat('/games leaderboard'); }, 18000);
-        setTimeout(() => finish(0), 22000);
+        setTimeout(() => { logAction('creator', 'chat /games info'); creator.chat('/games info'); }, 20000);
+        setTimeout(() => finish(0), 24000);
       }
     }
   });
