@@ -5,6 +5,7 @@ const port = 25565;
 const username = 'TestBot';
 
 let done = false;
+let createdLobbyId = null;
 
 const bot = createBot({ host, port, username, version: false });
 
@@ -16,23 +17,29 @@ const finish = (code) => {
 
 bot.on('login', () => {
   console.log('[bot] logged in');
-  // give server a moment to settle
-  setTimeout(() => bot.chat('/games'), 2000);
 });
 
 bot.on('spawn', () => {
   console.log('[bot] spawned');
+  // Wait a bit for server startup tasks
   setTimeout(() => {
-    bot.chat('/games lobby create original 0 80 0 world');
-    setTimeout(() => bot.chat('/games lobby join latest'), 2000);
-    setTimeout(() => bot.chat('/games lobby leave'), 5000);
-    setTimeout(() => finish(0), 8000);
-  }, 3000);
+    bot.chat('/games lobby create original 0 80 0 minecraft:world');
+  }, 2000);
 });
 
 bot.on('message', (json) => {
   const msg = json.toString();
   console.log('[server]', msg);
+
+  if (!createdLobbyId) {
+    const match = msg.match(/\(([0-9A-Za-z]+)\)/);
+    if (msg.includes('Lobby created successfully') && match) {
+      createdLobbyId = match[1];
+      setTimeout(() => bot.chat(`/games lobby join ${createdLobbyId}`), 1000);
+      setTimeout(() => bot.chat('/games lobby leave'), 5000);
+      setTimeout(() => finish(0), 8000);
+    }
+  }
 });
 
 bot.on('kicked', (reason) => {
@@ -46,6 +53,6 @@ bot.on('error', (err) => {
 });
 
 setTimeout(() => {
-  console.error('[bot] timeout connecting');
+  console.error('[bot] timeout connecting or no lobby created');
   finish(1);
-}, 20000);
+}, 30000);
