@@ -6,6 +6,7 @@ const username = 'TestBot';
 
 let done = false;
 let createdLobbyId = null;
+let created = false;
 
 const bot = createBot({ host, port, username, version: false });
 
@@ -23,7 +24,11 @@ bot.on('spawn', () => {
   console.log('[bot] spawned');
   // Wait a bit for server startup tasks
   setTimeout(() => {
-    bot.chat('/games lobby create original 0 80 0 minecraft:world');
+    const x = Math.floor(bot.entity.position.x);
+    const y = Math.floor(bot.entity.position.y);
+    const z = Math.floor(bot.entity.position.z);
+    bot.chat(`/games lobby create original ${x} ${y} ${z} world`);
+    created = true;
   }, 2000);
 });
 
@@ -31,7 +36,7 @@ bot.on('message', (json) => {
   const msg = json.toString();
   console.log('[server]', msg);
 
-  if (!createdLobbyId) {
+  if (created && !createdLobbyId) {
     const match = msg.match(/\(([0-9A-Za-z]+)\)/);
     if (msg.includes('Lobby created successfully') && match) {
       createdLobbyId = match[1];
