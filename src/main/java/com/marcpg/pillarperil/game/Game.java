@@ -38,6 +38,7 @@ public abstract class Game {
     protected final Map<Location, BlockData> initialBlocks = new HashMap<>();
     protected List<Material> items;
     protected Lobby originLobby;
+    private PillarPlayer lastStandingCandidate;
 
     protected long itemCooldown = info().itemCooldown();
     protected final Time timeLeft = new Time(info().timeLimit());
@@ -122,6 +123,9 @@ public abstract class Game {
         Bukkit.getScheduler().runTaskLater(PillarPeril.PLUGIN, () -> {
             player.player.teleport(center);
             player.player.setGameMode(GameMode.SPECTATOR);
+            if (players.size() == 1) {
+                lastStandingCandidate = players.getFirst();
+            }
             checkEndCondition();
         }, 20);
     }
@@ -154,6 +158,9 @@ public abstract class Game {
 
         // Ensure end conditions trigger after eliminations
         if (players.size() < initialPlayers.size()) {
+            if (players.size() == 1) {
+                lastStandingCandidate = players.getFirst();
+            }
             checkEndCondition();
         }
     }
@@ -193,6 +200,9 @@ public abstract class Game {
         List<PillarPlayer> winnersToRecord = new ArrayList<>(winners);
         if (winnersToRecord.isEmpty() && players.size() == 1) {
             winnersToRecord.add(players.getFirst());
+        }
+        if (winnersToRecord.isEmpty() && lastStandingCandidate != null) {
+            winnersToRecord.add(lastStandingCandidate);
         }
         if (cause == EndingCause.LAST_STANDING || (cause == EndingCause.FORCE && !winnersToRecord.isEmpty())) {
             winnersToRecord.forEach(com.marcpg.pillarperil.game.util.StatsManager::recordWin);

@@ -93,10 +93,9 @@ const bootstrap = () => {
         // give a moment for game to start, then kill other bots to trigger win
         setTimeout(() => { logAction('creator', 'chat /kill TestBot2'); creator.chat('/kill TestBot2'); }, 12000);
         setTimeout(() => { logAction('creator', 'chat /kill TestBot3'); creator.chat('/kill TestBot3'); }, 14000);
-        // show info/leaderboard after win should be recorded
+        // show leaderboard after win should be recorded
         setTimeout(() => { logAction('creator', 'chat /games leaderboard'); creator.chat('/games leaderboard'); }, 18000);
-        setTimeout(() => { logAction('creator', 'chat /games info'); creator.chat('/games info'); }, 20000);
-        setTimeout(() => finish(0), 24000);
+        setTimeout(() => finish(0), 23000);
       }
     }
   });
