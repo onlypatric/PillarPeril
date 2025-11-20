@@ -88,13 +88,14 @@ const bootstrap = () => {
         botNames.slice(1).forEach((name, idx) => {
           setTimeout(() => createJoiner(name, idx, idx * 800), 1200 + idx * 1200);
         });
-        // start games and simulate leave/rejoin
+        // start one game, then eliminate joiners so creator wins
         setTimeout(() => { logAction('creator', `chat /games lobby force-start ${lobbyId}`); creator.chat(`/games lobby force-start ${lobbyId}`); }, 6000);
-        setTimeout(() => { logAction('creator', 'chat /games lobby leave'); creator.chat('/games lobby leave'); }, 11000);
-        setTimeout(() => { logAction('creator', `chat /games lobby join ${lobbyId}`); creator.chat(`/games lobby join ${lobbyId}`); }, 13000);
-        setTimeout(() => { logAction('creator', `chat /games lobby force-start ${lobbyId}`); creator.chat(`/games lobby force-start ${lobbyId}`); }, 17000);
-        setTimeout(() => { logAction('creator', 'chat /games leaderboard'); creator.chat('/games leaderboard'); }, 22000);
-        setTimeout(() => finish(0), 25000);
+        // give a moment for game to start, then kill other bots to trigger win
+        setTimeout(() => { logAction('creator', 'chat /kill TestBot2'); creator.chat('/kill TestBot2'); }, 12000);
+        setTimeout(() => { logAction('creator', 'chat /kill TestBot3'); creator.chat('/kill TestBot3'); }, 14000);
+        // show leaderboard after win should be recorded
+        setTimeout(() => { logAction('creator', 'chat /games leaderboard'); creator.chat('/games leaderboard'); }, 18000);
+        setTimeout(() => finish(0), 22000);
       }
     }
   });
@@ -102,7 +103,7 @@ const bootstrap = () => {
   setTimeout(() => {
     console.error('[bot] timeout during integration scenario');
     finish(1);
-  }, 45000);
+  }, 30000);
 };
 
 bootstrap();
