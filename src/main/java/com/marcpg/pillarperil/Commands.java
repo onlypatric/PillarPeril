@@ -321,54 +321,54 @@ public class Commands {
                                     return 1;
                                 })
                         )
-                        .then(LiteralArgumentBuilder.<CommandSourceStack>literal("setspawn")
-                                .requires(source -> source.getSender().hasPermission("pillarperil.lobby.setspawn"))
-                                .then(RequiredArgumentBuilder.<CommandSourceStack, String>argument("id", StringArgumentType.word())
-                                        .executes(context -> {
-                                            CommandSender source = context.getSource().getSender();
-                                            if (!(source instanceof Player player)) {
-                                                source.sendMessage(Component.text("Only players can set lobby spawn.", NamedTextColor.RED));
-                                                return 1;
-                                            }
+                )
+                .then(LiteralArgumentBuilder.<CommandSourceStack>literal("setspawn")
+                        .requires(source -> source.getSender().hasPermission("pillarperil.lobby.setspawn"))
+                        .then(RequiredArgumentBuilder.<CommandSourceStack, String>argument("id", StringArgumentType.word())
+                                .executes(context -> {
+                                    CommandSender source = context.getSource().getSender();
+                                    if (!(source instanceof Player player)) {
+                                        source.sendMessage(Component.text("Only players can set lobby spawn.", NamedTextColor.RED));
+                                        return 1;
+                                    }
 
-                                            Locale l = PillarPeril.locale(source);
-                                            String id = context.getArgument("id", String.class);
-                                            Lobby lobby = LobbyManager.lobby(id);
-                                            if (lobby == null) {
-                                                source.sendMessage(Translation.component(l, "games.lobby.join.not_found").color(NamedTextColor.RED));
-                                                return 1;
-                                            }
+                                    Locale l = PillarPeril.locale(source);
+                                    String id = context.getArgument("id", String.class);
+                                    Lobby lobby = LobbyManager.lobby(id);
+                                    if (lobby == null) {
+                                        source.sendMessage(Translation.component(l, "games.lobby.join.not_found").color(NamedTextColor.RED));
+                                        return 1;
+                                    }
 
-                                            lobby.setLobbySpawn(player.getLocation());
-                                                    source.sendMessage(Translation.component(l, "games.lobby.setspawn.success").color(NamedTextColor.GREEN));
-                                                    return 1;
-                                                })
-                                        )
-                                )
-                        .then(LiteralArgumentBuilder.<CommandSourceStack>literal("setwaiting")
-                                .requires(source -> source.getSender().hasPermission("pillarperil.lobby.setwaiting"))
-                                .then(RequiredArgumentBuilder.<CommandSourceStack, String>argument("id", StringArgumentType.word())
-                                        .executes(context -> {
-                                            CommandSender source = context.getSource().getSender();
-                                            if (!(source instanceof Player player)) {
-                                                source.sendMessage(Component.text("Only players can set waiting spawns.", NamedTextColor.RED));
-                                                return 1;
-                                            }
+                                    lobby.setLobbySpawn(player.getLocation());
+                                    source.sendMessage(Translation.component(l, "games.lobby.setspawn.success").color(NamedTextColor.GREEN));
+                                    return 1;
+                                })
+                        )
+                )
+                .then(LiteralArgumentBuilder.<CommandSourceStack>literal("setwaiting")
+                        .requires(source -> source.getSender().hasPermission("pillarperil.lobby.setwaiting"))
+                        .then(RequiredArgumentBuilder.<CommandSourceStack, String>argument("id", StringArgumentType.word())
+                                .executes(context -> {
+                                    CommandSender source = context.getSource().getSender();
+                                    if (!(source instanceof Player player)) {
+                                        source.sendMessage(Component.text("Only players can set waiting spawns.", NamedTextColor.RED));
+                                        return 1;
+                                    }
 
-                                            Locale l = PillarPeril.locale(source);
+                                    Locale l = PillarPeril.locale(source);
 
-                                            String id = context.getArgument("id", String.class);
-                                            Lobby lobby = LobbyManager.lobby(id);
-                                            if (lobby == null) {
-                                                source.sendMessage(Translation.component(l, "games.lobby.join.not_found").color(NamedTextColor.RED));
-                                                return 1;
-                                            }
+                                    String id = context.getArgument("id", String.class);
+                                    Lobby lobby = LobbyManager.lobby(id);
+                                    if (lobby == null) {
+                                        source.sendMessage(Translation.component(l, "games.lobby.join.not_found").color(NamedTextColor.RED));
+                                        return 1;
+                                    }
 
-                                            lobby.setWaitingSpawn(player.getLocation());
-                                            source.sendMessage(Translation.component(l, "games.lobby.setwaiting.success").color(NamedTextColor.GREEN));
-                                            return 1;
-                                        })
-                                )
+                                    lobby.setWaitingSpawn(player.getLocation());
+                                    source.sendMessage(Translation.component(l, "games.lobby.setwaiting.success").color(NamedTextColor.GREEN));
+                                    return 1;
+                                })
                         )
                 )
                 .then(LiteralArgumentBuilder.<CommandSourceStack>literal("leaderboard")

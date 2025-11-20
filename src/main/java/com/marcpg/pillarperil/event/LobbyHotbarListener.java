@@ -19,7 +19,7 @@ public class LobbyHotbarListener implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onHotbarInteract(@NotNull PlayerInteractEvent event) {
         Action action = event.getAction();
-        if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) {
+        if (action == Action.PHYSICAL) {
             return;
         }
 
@@ -29,7 +29,16 @@ public class LobbyHotbarListener implements Listener {
             return;
         }
 
-        Lobby.HotbarAction hotbarAction = Lobby.hotbarAction(event.getItem());
+        // Some client interactions (e.g., clicking air or using off-hand) report null items.
+        var stack = event.getItem();
+        if (stack == null) {
+            stack = player.getInventory().getItemInMainHand();
+            if (stack == null || stack.getType().isAir()) {
+                stack = player.getInventory().getItemInOffHand();
+            }
+        }
+
+        Lobby.HotbarAction hotbarAction = Lobby.hotbarAction(stack);
         if (hotbarAction == null) {
             return;
         }
