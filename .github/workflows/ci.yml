@@ -58,6 +58,7 @@ jobs:
           online-mode=false
           enable-command-block=true
           max-players=5
+          connection-throttle=-1
           view-distance=4
           motd=PillarPeril Integration Test
           PROPS
