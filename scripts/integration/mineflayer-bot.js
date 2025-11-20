@@ -27,7 +27,8 @@ bot.on('spawn', () => {
     const x = Math.floor(bot.entity.position.x);
     const y = Math.floor(bot.entity.position.y);
     const z = Math.floor(bot.entity.position.z);
-    bot.chat(`/games lobby create original ${x} ${y} ${z} world`);
+    const worldName = 'minecraft:overworld';
+    bot.chat(`/games lobby create original ${x} ${y} ${z} ${worldName}`);
     created = true;
   }, 2000);
 });
