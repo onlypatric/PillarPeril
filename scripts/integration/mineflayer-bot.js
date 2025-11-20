@@ -7,20 +7,25 @@ const botNames = ['TestBot', 'TestBot2', 'TestBot3'];
 let done = false;
 let lobbyId = null;
 const joinerStatus = {};
+const startedAt = Date.now();
+
+const ts = () => new Date().toISOString();
+const logAction = (label, msg) => console.log(`[${ts()}][${label}] ${msg}`);
 
 const finish = (code) => {
   if (done) return;
   done = true;
+  logAction('bot', `Finishing with code ${code} after ${(Date.now() - startedAt) / 1000}s`);
   setTimeout(() => process.exit(code), 1000);
 };
 
 const handleCommonEvents = (bot, label) => {
   bot.on('error', (err) => {
-    console.error(`[${label}] error`, err);
+    console.error(`[${ts()}][${label}] error`, err);
     finish(1);
   });
   bot.on('kicked', (reason) => {
-    console.error(`[${label}] kicked`, reason);
+    console.error(`[${ts()}][${label}] kicked`, reason);
     finish(1);
   });
 };
@@ -28,10 +33,12 @@ const handleCommonEvents = (bot, label) => {
 const createJoiner = (name, idx, delay) => {
   const bot = createBot({ host, port, username: name, version: false });
   handleCommonEvents(bot, `joiner${idx + 1}`);
-  bot.on('login', () => console.log(`[joiner${idx + 1}] logged in`));
+  bot.on('login', () => logAction(`joiner${idx + 1}`, 'logged in'));
   bot.once('spawn', () => {
+    logAction(`joiner${idx + 1}`, 'spawned');
     setTimeout(() => {
       if (lobbyId) {
+        logAction(`joiner${idx + 1}`, `chat /games lobby join ${lobbyId}`);
         bot.chat(`/games lobby join ${lobbyId}`);
         joinerStatus[name] = 'joined';
       }
@@ -44,13 +51,15 @@ const bootstrap = () => {
   const creator = createBot({ host, port, username: botNames[0], version: false });
   handleCommonEvents(creator, 'creator');
 
-  creator.on('login', () => console.log('[creator] logged in'));
+  creator.on('login', () => logAction('creator', 'logged in'));
   creator.on('spawn', () => {
-    console.log('[creator] spawned');
+    logAction('creator', 'spawned');
     setTimeout(() => {
       const { x, y, z } = creator.entity.position;
       const worldName = 'minecraft:overworld';
-      creator.chat(`/games lobby create original ${Math.floor(x)} ${Math.floor(y)} ${Math.floor(z)} ${worldName}`);
+      const cmd = `/games lobby create original ${Math.floor(x)} ${Math.floor(y)} ${Math.floor(z)} ${worldName}`;
+      logAction('creator', `chat ${cmd}`);
+      creator.chat(cmd);
     }, 2000);
   });
 
@@ -69,18 +78,22 @@ const bootstrap = () => {
       const match = msg.match(/\(([0-9A-Za-z]+)\)/);
       if (msg.includes('Lobby created successfully') && match) {
         lobbyId = match[1];
-        console.log('[bot] captured lobby id', lobbyId);
+        logAction('bot', `captured lobby id ${lobbyId}`);
         // creator joins first
-        setTimeout(() => creator.chat(`/games lobby join ${lobbyId}`), 500);
+        setTimeout(() => {
+          logAction('creator', `chat /games lobby join ${lobbyId}`);
+          creator.chat(`/games lobby join ${lobbyId}`);
+        }, 500);
         // spawn joiners staggered to avoid throttle
         botNames.slice(1).forEach((name, idx) => {
           setTimeout(() => createJoiner(name, idx, idx * 800), 1200 + idx * 1200);
         });
         // start games and simulate leave/rejoin
-        setTimeout(() => creator.chat(`/games lobby force-start ${lobbyId}`), 6000);
-        setTimeout(() => creator.chat('/games lobby leave'), 11000);
-        setTimeout(() => creator.chat(`/games lobby join ${lobbyId}`), 13000);
-        setTimeout(() => creator.chat(`/games lobby force-start ${lobbyId}`), 17000);
+        setTimeout(() => { logAction('creator', `chat /games lobby force-start ${lobbyId}`); creator.chat(`/games lobby force-start ${lobbyId}`); }, 6000);
+        setTimeout(() => { logAction('creator', 'chat /games lobby leave'); creator.chat('/games lobby leave'); }, 11000);
+        setTimeout(() => { logAction('creator', `chat /games lobby join ${lobbyId}`); creator.chat(`/games lobby join ${lobbyId}`); }, 13000);
+        setTimeout(() => { logAction('creator', `chat /games lobby force-start ${lobbyId}`); creator.chat(`/games lobby force-start ${lobbyId}`); }, 17000);
+        setTimeout(() => { logAction('creator', 'chat /games leaderboard'); creator.chat('/games leaderboard'); }, 22000);
         setTimeout(() => finish(0), 25000);
       }
     }
