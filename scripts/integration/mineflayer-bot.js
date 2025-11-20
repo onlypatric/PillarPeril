@@ -66,6 +66,16 @@ const bootstrap = () => {
   creator.on('message', (json) => {
     const msg = json.toString();
     console.log(`[${ts()}][server] ${msg}`);
+    if (msg.includes('Game') && msg.toLowerCase().contains('ended with winner')) {
+      logAction('bot', `server reported winner line: ${msg}`);
+    }
+
+    if (msg.contains('Game ') && msg.contains('started')) {
+      botNames.slice(1).forEach((name, idx) => {
+        const status = joinerStatus[name] || '??';
+        logAction('bot', `${name} status ${status}`);
+      });
+    }
 
     // Treat obvious server errors as failures
     if (/exception|error/i.test(msg) && !msg.includes('Lobby error')) {
@@ -94,8 +104,8 @@ const bootstrap = () => {
         setTimeout(() => { logAction('creator', 'chat /kill TestBot2'); creator.chat('/kill TestBot2'); }, 12000);
         setTimeout(() => { logAction('creator', 'chat /kill TestBot3'); creator.chat('/kill TestBot3'); }, 14000);
         // show leaderboard after win should be recorded
-        setTimeout(() => { logAction('creator', 'chat /games leaderboard'); creator.chat('/games leaderboard'); }, 18000);
-        setTimeout(() => finish(0), 23000);
+        setTimeout(() => { logAction('creator', 'chat /games leaderboard'); creator.chat('/games leaderboard'); }, 22000);
+        setTimeout(() => finish(0), 26000);
       }
     }
   });
