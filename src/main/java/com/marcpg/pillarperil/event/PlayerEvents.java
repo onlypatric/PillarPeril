@@ -17,18 +17,26 @@ import org.jetbrains.annotations.NotNull;
 public class PlayerEvents implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onPlayerDeath(@NotNull PlayerDeathEvent event) {
-        PillarPlayer player = GameManager.player(event.getPlayer(), true);
-        if (player != null) {
-            if (player.player.getKiller() != null) {
-                PillarPlayer killer = player.game.player(player.player.getKiller(), false);
-                if (killer != null) {
-                    killer.addKill();
-                    StatsManager.recordKill(killer);
-                }
-            }
-
-            player.game.eliminate(player);
+        PillarPlayer player = GameManager.player(event.getPlayer(), false);
+        if (player == null || player.game == null) {
+            return;
         }
+
+        Game game = player.game;
+        // Only handle deaths for players that are currently alive in a game
+        if (!game.players().contains(player)) {
+            return;
+        }
+
+        if (player.player.getKiller() != null) {
+            PillarPlayer killer = game.player(player.player.getKiller(), false);
+            if (killer != null) {
+                killer.addKill();
+                StatsManager.recordKill(killer);
+            }
+        }
+
+        game.eliminate(player);
     }
 
     @EventHandler(ignoreCancelled = true)

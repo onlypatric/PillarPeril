@@ -118,9 +118,15 @@ public abstract class Game {
     }
 
     public void eliminate(PillarPlayer player) {
+        if (ended || !players.contains(player)) {
+            return;
+        }
         players.remove(player);
 
         Bukkit.getScheduler().runTaskLater(PillarPeril.PLUGIN, () -> {
+            if (ended) {
+                return;
+            }
             player.player.teleport(center);
             player.player.setGameMode(GameMode.SPECTATOR);
             if (players.size() == 1) {
@@ -137,6 +143,9 @@ public abstract class Game {
 
     @OverridingMethodsMustInvokeSuper
     public void tick(int tick) {
+        if (ended) {
+            return;
+        }
         if (tick % 10 == 0) {
             players.forEach(PillarPlayer::tick);
             if (tick % 20 == 0)
@@ -146,6 +155,9 @@ public abstract class Game {
 
     @OverridingMethodsMustInvokeSuper
     public void tickSecond() {
+        if (ended) {
+            return;
+        }
         itemCooldown--;
         if (itemCooldown <= 0) {
             players.forEach(p -> p.giveItem(items));

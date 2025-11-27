@@ -16,8 +16,13 @@ import org.jetbrains.annotations.NotNull;
 public class GameEvents implements Listener {
     @EventHandler
     public void onServerTickEnd(ServerTickEndEvent event) {
-        GameManager.GAMES.forEach(game -> game.tick(event.getTickNumber()));
-        LobbyManager.LOBBIES.forEach(lobby -> lobby.tick(event.getTickNumber()));
+        // Copy to avoid ConcurrentModificationException when games/lobbies
+        // are added or removed during ticking (e.g., game.end() -> cleanup()).
+        for (Game game : java.util.List.copyOf(GameManager.GAMES)) {
+            game.tick(event.getTickNumber());
+        }
+        java.util.List.copyOf(LobbyManager.LOBBIES)
+                .forEach(lobby -> lobby.tick(event.getTickNumber()));
     }
 
     @EventHandler(ignoreCancelled = true)

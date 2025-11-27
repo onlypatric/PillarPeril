@@ -5,14 +5,14 @@ import com.marcpg.pillarperil.PillarPeril;
 import com.marcpg.pillarperil.game.Lobby;
 import com.marcpg.pillarperil.game.util.LobbyManager;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.player.PlayerAnimationEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
-import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Locale;
@@ -32,12 +32,24 @@ public class LobbyHotbarListener implements Listener {
             return;
         }
 
-        ItemStack stack = resolveInteractedItem(event);
-        if (stack == null || stack.getType().isAir()) {
-            return;
+        PlayerInventory inventory = player.getInventory();
+        ItemStack main = inventory.getItemInMainHand();
+        ItemStack off = inventory.getItemInOffHand();
+
+        Lobby.HotbarAction mainAction = Lobby.hotbarAction(main);
+        Lobby.HotbarAction offAction = Lobby.hotbarAction(off);
+
+        // If either hand holds the LEAVE item, always treat the action as LEAVE,
+        // regardless of what was technically clicked.
+        Lobby.HotbarAction hotbarAction;
+        if (mainAction == Lobby.HotbarAction.LEAVE || offAction == Lobby.HotbarAction.LEAVE) {
+            hotbarAction = Lobby.HotbarAction.LEAVE;
+        } else if (mainAction != null) {
+            hotbarAction = mainAction;
+        } else {
+            hotbarAction = offAction;
         }
 
-        Lobby.HotbarAction hotbarAction = Lobby.hotbarAction(stack);
         if (hotbarAction == null) {
             return;
         }
@@ -51,33 +63,22 @@ public class LobbyHotbarListener implements Listener {
         }
     }
 
-    private ItemStack resolveInteractedItem(PlayerInteractEvent event) {
-        ItemStack stack = event.getItem();
+    @EventHandler(ignoreCancelled = false)
+    public void onHotbarSwing(@NotNull PlayerAnimationEvent event) {
         Player player = event.getPlayer();
+        Lobby lobby = LobbyManager.lobby(player);
+        if (lobby == null) {
+            return;
+        }
+
         PlayerInventory inventory = player.getInventory();
-        EquipmentSlot hand = event.getHand();
+        ItemStack main = inventory.getItemInMainHand();
+        ItemStack off = inventory.getItemInOffHand();
 
-        if (stack == null || stack.getType().isAir()) {
-            if (hand == EquipmentSlot.OFF_HAND) {
-                stack = inventory.getItemInOffHand();
-            } else if (hand == EquipmentSlot.HAND) {
-                stack = inventory.getItemInMainHand();
-            }
+        if (Lobby.hotbarAction(main) == Lobby.HotbarAction.LEAVE || Lobby.hotbarAction(off) == Lobby.HotbarAction.LEAVE) {
+            Locale locale = PillarPeril.locale(player);
+            handleLeave(player, lobby, locale);
         }
-
-        if (stack == null || stack.getType().isAir()) {
-            // Fall back to whichever hand currently holds a GUI item.
-            ItemStack main = inventory.getItemInMainHand();
-            if (Lobby.hotbarAction(main) != null) {
-                stack = main;
-            } else {
-                ItemStack off = inventory.getItemInOffHand();
-                if (Lobby.hotbarAction(off) != null) {
-                    stack = off;
-                }
-            }
-        }
-        return stack;
     }
 
     private void handleStart(Player player, Lobby lobby, Locale locale) {
