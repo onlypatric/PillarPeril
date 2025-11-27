@@ -5,11 +5,14 @@ import com.marcpg.pillarperil.PillarPeril;
 import com.marcpg.pillarperil.game.Lobby;
 import com.marcpg.pillarperil.game.util.LobbyManager;
 import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Locale;
@@ -29,13 +32,9 @@ public class LobbyHotbarListener implements Listener {
             return;
         }
 
-        // Some client interactions (e.g., clicking air or using off-hand) report null items.
-        var stack = event.getItem();
-        if (stack == null) {
-            stack = player.getInventory().getItemInMainHand();
-            if (stack == null || stack.getType().isAir()) {
-                stack = player.getInventory().getItemInOffHand();
-            }
+        ItemStack stack = resolveInteractedItem(event);
+        if (stack == null || stack.getType().isAir()) {
+            return;
         }
 
         Lobby.HotbarAction hotbarAction = Lobby.hotbarAction(stack);
@@ -48,9 +47,37 @@ public class LobbyHotbarListener implements Listener {
 
         switch (hotbarAction) {
             case START -> handleStart(player, lobby, locale);
-            case QUEUE -> handleQueue(player, lobby, locale);
             case LEAVE -> handleLeave(player, lobby, locale);
         }
+    }
+
+    private ItemStack resolveInteractedItem(PlayerInteractEvent event) {
+        ItemStack stack = event.getItem();
+        Player player = event.getPlayer();
+        PlayerInventory inventory = player.getInventory();
+        EquipmentSlot hand = event.getHand();
+
+        if (stack == null || stack.getType().isAir()) {
+            if (hand == EquipmentSlot.OFF_HAND) {
+                stack = inventory.getItemInOffHand();
+            } else if (hand == EquipmentSlot.HAND) {
+                stack = inventory.getItemInMainHand();
+            }
+        }
+
+        if (stack == null || stack.getType().isAir()) {
+            // Fall back to whichever hand currently holds a GUI item.
+            ItemStack main = inventory.getItemInMainHand();
+            if (Lobby.hotbarAction(main) != null) {
+                stack = main;
+            } else {
+                ItemStack off = inventory.getItemInOffHand();
+                if (Lobby.hotbarAction(off) != null) {
+                    stack = off;
+                }
+            }
+        }
+        return stack;
     }
 
     private void handleStart(Player player, Lobby lobby, Locale locale) {
@@ -77,14 +104,5 @@ public class LobbyHotbarListener implements Listener {
         lobby.leave(player);
         player.teleport(PillarPeril.endSpawn(player.getWorld()));
         player.sendMessage(Translation.component(locale, "games.lobby.leave.success").color(NamedTextColor.YELLOW));
-    }
-
-    private void handleQueue(Player player, Lobby lobby, Locale locale) {
-        boolean ready = lobby.toggleReady(player);
-        if (ready) {
-            player.sendMessage(Translation.component(locale, "games.lobby.hotbar.queue.ready_confirm").color(NamedTextColor.GREEN));
-        } else {
-            player.sendMessage(Translation.component(locale, "games.lobby.hotbar.queue.unready_confirm").color(NamedTextColor.YELLOW));
-        }
     }
 }

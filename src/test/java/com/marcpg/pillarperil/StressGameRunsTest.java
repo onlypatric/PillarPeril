@@ -282,6 +282,8 @@ class StressGameRunsTest {
     void persistentLobbiesHandleMultipleLargeGames() {
         World world = server.addSimpleWorld("lobby_world");
         int baseLobbies = LobbyManager.LOBBIES.size();
+        var scoreboardManager = Bukkit.getScoreboardManager();
+        assertNotNull(scoreboardManager);
 
         List<Lobby> lobbies = new ArrayList<>();
         List<List<PlayerMock>> lobbyPlayers = new ArrayList<>();
@@ -319,14 +321,13 @@ class StressGameRunsTest {
                 Lobby lobby = lobbies.get(lobbyIndex);
                 List<PlayerMock> players = lobbyPlayers.get(lobbyIndex);
 
-                if (round > 0) {
-                    PlayerMock tempLeave = players.get(round - 1);
-                    lobby.leave(tempLeave);
-                    assertTrue(tempLeave.getInventory().containsAtLeast(new ItemStack(Material.DIAMOND, expectedDiamonds.get(tempLeave)), 1));
-                    assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(tempLeave));
+                for (PlayerMock player : players) {
+                    if (!lobby.players().contains(player)) {
+                        assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(player));
+                        assertNotNull(player.getScoreboard().getObjective("pp_lobby"));
+                    }
                 }
 
-                players.forEach(player -> assertTrue(lobby.toggleReady(player)));
                 LobbySimGame game = waitForLobbyGameStart(lobby);
                 assertNotNull(game, "Lobby did not start a game for lobby index " + lobbyIndex + " round " + round);
 
@@ -340,15 +341,16 @@ class StressGameRunsTest {
                 assertEquals(Lobby.LobbyState.WAITING, lobby.state());
                 assertNull(lobby.currentGame());
 
-                Location spawn = lobby.lobbySpawn();
+                assertTrue(lobby.players().isEmpty(), "Lobby should be empty between games");
+                Location hub = PillarPeril.endSpawn(world);
                 for (PlayerMock player : players) {
                     Location loc = player.getLocation();
-                    assertEquals(spawn.getBlockX(), loc.getBlockX(), "Player not returned to lobby spawn X after round");
-                    assertEquals(spawn.getBlockZ(), loc.getBlockZ(), "Player not returned to lobby spawn Z after round");
-                    assertEquals(spawn.getBlockY(), loc.getBlockY(), "Player not returned to lobby spawn Y after round");
+                    assertEquals(hub.getBlockX(), loc.getBlockX(), "Player not returned to end spawn X after round");
+                    assertEquals(hub.getBlockZ(), loc.getBlockZ(), "Player not returned to end spawn Z after round");
+                    assertEquals(hub.getBlockY(), loc.getBlockY(), "Player not returned to end spawn Y after round");
                     assertEquals(expectedDiamonds.get(player), countMaterial(player, Material.DIAMOND), "Diamonds not restored for " + player.getName());
                     assertEquals(expectedLevels.get(player), player.getLevel(), "Level not restored for " + player.getName());
-                    assertNotNull(player.getScoreboard().getObjective("pp_lobby"), "Lobby scoreboard missing after round");
+                    assertEquals(scoreboardManager.getMainScoreboard(), player.getScoreboard(), "Player scoreboard should reset after round");
                 }
             }
         }

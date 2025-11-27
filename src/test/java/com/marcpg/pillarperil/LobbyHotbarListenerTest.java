@@ -72,27 +72,25 @@ class LobbyHotbarListenerTest {
     }
 
     @Test
-    void queueHotbarItemMarksPlayersReadyAndStartsCountdown() {
-        World world = server.addSimpleWorld("world_queue");
+    void startItemWorksEvenWhenClickingAirWithoutDirectItemReference() {
+        World world = server.addSimpleWorld("world_start_air");
         Location center = new Location(world, 0, 80, 0);
 
-        Lobby lobby = new Lobby(center, 2, 4, 5L, "test", DummyMode.class);
-        PlayerMock alice = server.addPlayer("QueueAlice");
-        PlayerMock bob = server.addPlayer("QueueBob");
-        assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(alice));
-        assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(bob));
+        Lobby lobby = new Lobby(center, 1, 4, 5L, "test", DummyMode.class);
+        PlayerMock player = server.addPlayer("AirClicker");
+        player.setOp(true);
+        assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(player));
 
-        ItemStack aliceQueue = alice.getInventory().getItem(7);
-        ItemStack bobQueue = bob.getInventory().getItem(7);
-        assertNotNull(aliceQueue);
-        assertNotNull(bobQueue);
+        // Simulate an interaction where Bukkit reports null for the item (e.g., left-click air)
+        PlayerInteractEvent event = new PlayerInteractEvent(player, Action.LEFT_CLICK_AIR, null, null, BlockFace.SELF);
+        listener.onHotbarInteract(event);
 
-        listener.onHotbarInteract(new PlayerInteractEvent(alice, Action.RIGHT_CLICK_AIR, aliceQueue, null, BlockFace.SELF));
-        assertEquals(Lobby.LobbyState.WAITING, lobby.state(), "Countdown should not start until minimum ready players");
+        assertTrue(event.isCancelled(), "Hotbar interaction should still cancel when clicking air");
+        assertEquals(Lobby.LobbyState.IN_GAME, lobby.state(), "Lobby should start the game even when no block was targeted");
 
-        listener.onHotbarInteract(new PlayerInteractEvent(bob, Action.RIGHT_CLICK_AIR, bobQueue, null, BlockFace.SELF));
-        assertEquals(Lobby.LobbyState.COUNTDOWN, lobby.state(), "Countdown should start when enough players ready");
-        assertEquals(lobby.countdownSeconds(), lobby.countdown().get(), "Countdown timer should reset to configured duration");
+        Game running = lobby.currentGame();
+        assertNotNull(running);
+        running.end(Game.EndingCause.FORCE, List.of());
     }
 
     @Test
@@ -117,32 +115,6 @@ class LobbyHotbarListenerTest {
     }
 
     @Test
-    void queueHotbarUnreadyCancelsCountdownAndUpdatesScoreboard() {
-        World world = server.addSimpleWorld("world_queue_cancel");
-        Location center = new Location(world, 0, 80, 0);
-
-        Lobby lobby = new Lobby(center, 2, 4, 5L, "test", DummyMode.class);
-        PlayerMock alice = server.addPlayer("QueueCancelAlice");
-        PlayerMock bob = server.addPlayer("QueueCancelBob");
-        assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(alice));
-        assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(bob));
-
-        ItemStack aliceQueue = alice.getInventory().getItem(7);
-        ItemStack bobQueue = bob.getInventory().getItem(7);
-        assertNotNull(aliceQueue);
-        assertNotNull(bobQueue);
-
-        listener.onHotbarInteract(new PlayerInteractEvent(alice, Action.RIGHT_CLICK_AIR, aliceQueue, null, BlockFace.SELF));
-        listener.onHotbarInteract(new PlayerInteractEvent(bob, Action.RIGHT_CLICK_AIR, bobQueue, null, BlockFace.SELF));
-        assertEquals(Lobby.LobbyState.COUNTDOWN, lobby.state(), "Countdown should start when ready threshold hit");
-
-        listener.onHotbarInteract(new PlayerInteractEvent(alice, Action.RIGHT_CLICK_AIR, aliceQueue, null, BlockFace.SELF));
-        assertEquals(Lobby.LobbyState.WAITING, lobby.state(), "Countdown should cancel when player unreadies");
-        assertEquals(lobby.countdownSeconds(), lobby.countdown().get(), "Countdown timer should reset after cancellation");
-        assertNotNull(alice.getScoreboard().getObjective("pp_lobby"), "Lobby scoreboard should persist after unready");
-    }
-
-    @Test
     void hotbarReappliedAfterGameEnds() {
         World world = server.addSimpleWorld("world_post_game");
         Location center = new Location(world, 0, 80, 0);
@@ -161,7 +133,6 @@ class LobbyHotbarListenerTest {
 
         assertEquals(Lobby.LobbyState.WAITING, lobby.state());
         assertEquals(Lobby.HotbarAction.START, Lobby.hotbarAction(player.getInventory().getItem(4)), "Start item should return after cleanup");
-        assertEquals(Lobby.HotbarAction.QUEUE, Lobby.hotbarAction(player.getInventory().getItem(7)), "Queue item should return after cleanup");
         assertEquals(Lobby.HotbarAction.LEAVE, Lobby.hotbarAction(player.getInventory().getItem(8)), "Leave item should return after cleanup");
         assertNotNull(player.getScoreboard().getObjective("pp_lobby"), "Lobby scoreboard should be reapplied after cleanup");
     }
@@ -209,7 +180,6 @@ class LobbyHotbarListenerTest {
 
         assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(player));
         assertEquals(Lobby.HotbarAction.START, Lobby.hotbarAction(player.getInventory().getItem(4)), "Start item should return when rejoining");
-        assertEquals(Lobby.HotbarAction.QUEUE, Lobby.hotbarAction(player.getInventory().getItem(7)), "Queue item should return when rejoining");
         assertEquals(Lobby.HotbarAction.LEAVE, Lobby.hotbarAction(player.getInventory().getItem(8)), "Leave item should return when rejoining");
     }
 

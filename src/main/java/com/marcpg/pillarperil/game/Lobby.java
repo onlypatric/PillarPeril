@@ -27,11 +27,9 @@ import org.bukkit.scoreboard.ScoreboardManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 public class Lobby {
@@ -47,7 +45,7 @@ public class Lobby {
         ALREADY_PRESENT
     }
 
-    public enum HotbarAction { START, QUEUE, LEAVE }
+    public enum HotbarAction { START, LEAVE }
 
     private static NamespacedKey hotbarKey() {
         if (PillarPeril.PLUGIN != null) {
@@ -66,7 +64,6 @@ public class Lobby {
     private final List<Player> players = new ArrayList<>();
     private final List<UUID> lastParticipants = new ArrayList<>();
     private final Map<UUID, InventorySnapshot> storedInventories = new HashMap<>();
-    private final Set<UUID> readyPlayers = new HashSet<>();
     private Location waitingSpawn;
     private Location lobbySpawn;
 
@@ -182,13 +179,15 @@ public class Lobby {
         players.add(player);
         if (state == LobbyState.COUNTDOWN) {
             countdown = new Time(countdownSeconds);
+            for (Player lobbyPlayer : players) {
+                lobbyPlayer.sendMessage(Translation.component(lobbyPlayer.locale(), "games.lobby.countdown.reset", countdown.getOneUnitFormatted()));
+            }
         }
-        readyPlayers.remove(player.getUniqueId());
         player.teleport(waitingSpawn());
         applyHotbar(player);
         updateScoreboards();
-        updateQueueItemsForAll();
         updateStartItemsForAll();
+        evaluatePlayerThresholds();
         return JoinResult.SUCCESS;
     }
 
@@ -197,28 +196,23 @@ public class Lobby {
             return;
         }
         resetScoreboard(player);
-        boolean wasReady = readyPlayers.remove(player.getUniqueId());
         restoreInventory(player, true);
-        if (wasReady) {
-            evaluateReadyThresholds();
-        }
-        updateQueueItemsForAll();
         updateStartItemsForAll();
         updateScoreboards();
+        evaluatePlayerThresholds();
     }
 
     public void cancel() {
         state = LobbyState.DISABLED;
-        // Reset scoreboards for all players before removing the lobby
         if (SCOREBOARD_MANAGER != null) {
             for (Player player : players) {
                 resetScoreboard(player);
             }
         }
-        readyPlayers.clear();
         for (Player player : players) {
             restoreInventory(player, true);
         }
+        players.clear();
     }
 
     /**
@@ -230,17 +224,22 @@ public class Lobby {
             return;
         }
 
-        evaluateReadyThresholds();
+        evaluatePlayerThresholds();
 
         if (tick % 20 == 0) {
             if (state == LobbyState.COUNTDOWN) {
                 countdown.decrement();
-                String formatted = countdown.getOneUnitFormatted();
                 for (Player player : players) {
-                    player.sendActionBar(Component.text("Game starting in " + formatted));
+                    player.sendActionBar(Translation.component(player.locale(), "games.lobby.actionbar.countdown", countdown.getOneUnitFormatted()));
                 }
-                updateQueueItemsForAll();
                 updateStartItemsForAll();
+
+                long secondsLeft = countdown.get();
+                if ((secondsLeft % 5 == 0 && secondsLeft > 5) || secondsLeft <= 5) {
+                    for (Player player : players) {
+                        player.sendMessage(Translation.component(player.locale(), "games.lobby.countdown.broadcast", secondsLeft));
+                    }
+                }
 
                 if (countdown.get() <= 0) {
                     state = LobbyState.WAITING;
@@ -249,7 +248,7 @@ public class Lobby {
                 }
             } else if (state == LobbyState.WAITING) {
                 for (Player player : players) {
-                    player.sendActionBar(Component.text("Waiting for players..."));
+                    player.sendActionBar(Translation.component(player.locale(), "games.lobby.actionbar.waiting"));
                 }
             }
 
@@ -278,7 +277,6 @@ public class Lobby {
             lastParticipants.add(player.getUniqueId());
             restoreInventory(player, false);
         }
-        readyPlayers.clear();
 
         try {
             if (SCOREBOARD_MANAGER != null) {
@@ -331,7 +329,6 @@ public class Lobby {
             lines.add(Translation.component(locale, "games.lobby.scoreboard.title"));
             lines.add(Translation.component(locale, "games.lobby.scoreboard.mode", modeKey));
             lines.add(Translation.component(locale, "games.lobby.scoreboard.players", players.size(), maxPlayers));
-            lines.add(Translation.component(locale, "games.lobby.scoreboard.ready", readyPlayers.size(), minPlayers));
             Component status = switch (state) {
                 case COUNTDOWN ->
                         Translation.component(locale, "games.lobby.scoreboard.status.countdown", countdown.getOneUnitFormatted());
@@ -362,6 +359,10 @@ public class Lobby {
     private void startCountdown() {
         state = LobbyState.COUNTDOWN;
         countdown = new Time(countdownSeconds);
+        for (Player player : players) {
+            player.sendMessage(Translation.component(player.locale(), "games.lobby.countdown.start", countdown.getOneUnitFormatted()));
+        }
+        updateStartItemsForAll();
     }
 
     public void onGameEnded(Game game) {
@@ -372,47 +373,21 @@ public class Lobby {
         if (state != LobbyState.DISABLED) {
             state = LobbyState.WAITING;
             countdown = new Time(countdownSeconds);
-            if (players.size() >= minPlayers) {
-                startCountdown();
-            }
-            for (Player player : players) {
-                if (player.isOnline()) {
-                    player.teleport(waitingSpawn());
-                    applyHotbar(player);
-                }
-            }
-            updateScoreboards();
+            List<Player> remaining = List.copyOf(players);
+            remaining.forEach(this::leave);
         }
     }
 
-    public boolean toggleReady(Player player) {
-        if (!players.contains(player) || state == LobbyState.IN_GAME || state == LobbyState.DISABLED) {
-            return readyPlayers.contains(player.getUniqueId());
-        }
-        UUID id = player.getUniqueId();
-        boolean ready;
-        if (readyPlayers.remove(id)) {
-            ready = false;
-        } else {
-            readyPlayers.add(id);
-            ready = true;
-        }
-
-        evaluateReadyThresholds();
-        updateQueueItemsForAll();
-        updateStartItemsForAll();
-        updateScoreboards();
-        return ready;
-    }
-
-    private void evaluateReadyThresholds() {
-        int readyCount = readyPlayers.size();
-        if (state == LobbyState.WAITING && readyCount >= minPlayers) {
+    private void evaluatePlayerThresholds() {
+        int activePlayers = players.size();
+        if (state == LobbyState.WAITING && activePlayers >= minPlayers) {
             startCountdown();
-        } else if (state == LobbyState.COUNTDOWN && readyCount < minPlayers) {
+        } else if (state == LobbyState.COUNTDOWN && activePlayers < minPlayers) {
             state = LobbyState.WAITING;
             countdown = new Time(countdownSeconds);
-            updateQueueItemsForAll();
+            for (Player player : players) {
+                player.sendMessage(Translation.component(player.locale(), "games.lobby.countdown.cancelled", minPlayers));
+            }
             updateStartItemsForAll();
         }
     }
@@ -430,7 +405,6 @@ public class Lobby {
         inventory.setItemInOffHand(null);
 
         updateStartItem(player);
-        updateQueueItem(player);
         inventory.setItem(8, createLeaveItem(player));
     }
 
@@ -461,22 +435,6 @@ public class Lobby {
         return createHotbarItem(Material.EMERALD, Translation.component(locale, "games.lobby.hotbar.start").color(NamedTextColor.GREEN), lore, HotbarAction.START);
     }
 
-    private ItemStack createQueueItem(Player player) {
-        Locale locale = player.locale();
-        boolean ready = readyPlayers.contains(player.getUniqueId());
-        String titleKey = ready ? "games.lobby.hotbar.queue.ready" : "games.lobby.hotbar.queue";
-        Component titleColor = Translation.component(locale, titleKey).color(ready ? NamedTextColor.GREEN : NamedTextColor.YELLOW);
-        List<Component> lore = new ArrayList<>();
-        lore.add(Translation.component(locale, "games.lobby.hotbar.queue.counts", readyPlayers.size(), minPlayers).color(NamedTextColor.GRAY));
-        if (state == LobbyState.COUNTDOWN) {
-            lore.add(Translation.component(locale, "games.lobby.hotbar.queue.countdown", countdown.getOneUnitFormatted()).color(NamedTextColor.AQUA));
-        } else {
-            String hintKey = ready ? "games.lobby.hotbar.queue.unready_hint" : "games.lobby.hotbar.queue.ready_hint";
-            lore.add(Translation.component(locale, hintKey).color(NamedTextColor.DARK_GRAY));
-        }
-        return createHotbarItem(Material.LIME_DYE, titleColor, lore, HotbarAction.QUEUE);
-    }
-
     private ItemStack createLeaveItem(Player player) {
         Locale locale = player.locale();
         List<Component> lore = List.of(Translation.component(locale, "games.lobby.hotbar.leave.lore").color(NamedTextColor.GRAY));
@@ -501,19 +459,6 @@ public class Lobby {
             player.getInventory().setItem(4, createStartItem(player));
         } else {
             player.getInventory().setItem(4, null);
-        }
-    }
-
-    private void updateQueueItem(Player player) {
-        if (!player.isOnline()) {
-            return;
-        }
-        player.getInventory().setItem(7, createQueueItem(player));
-    }
-
-    private void updateQueueItemsForAll() {
-        for (Player player : players) {
-            updateQueueItem(player);
         }
     }
 

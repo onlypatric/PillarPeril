@@ -113,9 +113,11 @@ public class PillarPlayer implements ForwardingAudience.Single {
         player.setScoreboard(SCOREBOARD_MANAGER.getMainScoreboard());
         player.clearActivePotionEffects();
         if (originLobby != null) {
-            player.teleport(originLobby.lobbySpawn());
-        } else {
+            player.teleport(PillarPeril.endSpawn(originLobby.world()));
+        } else if (game != null) {
             player.teleport(PillarPeril.endSpawn(game.world));
+        } else {
+            player.teleport(PillarPeril.endSpawn(player.getWorld()));
         }
         player.setGameMode(GameMode.SURVIVAL);
 

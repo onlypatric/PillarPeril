@@ -98,13 +98,14 @@ class LobbyTest {
         assertEquals(waiting.getBlockY(), player.getLocation().getBlockY());
         assertEquals(waiting.getBlockZ(), player.getLocation().getBlockZ());
 
-        // End a fake game to ensure returns to waiting spawn
+        // End a fake game to ensure players are not left inside the lobby
         lobby.forceStart();
         assertNotNull(lobby.currentGame());
         lobby.onGameEnded(lobby.currentGame());
-        assertEquals(waiting.getBlockX(), player.getLocation().getBlockX());
-        assertEquals(waiting.getBlockY(), player.getLocation().getBlockY());
-        assertEquals(waiting.getBlockZ(), player.getLocation().getBlockZ());
+        Location endSpawn = PillarPeril.endSpawn(world);
+        assertEquals(endSpawn.getBlockX(), player.getLocation().getBlockX());
+        assertEquals(endSpawn.getBlockY(), player.getLocation().getBlockY());
+        assertEquals(endSpawn.getBlockZ(), player.getLocation().getBlockZ());
     }
 
     @Test
@@ -128,28 +129,23 @@ class LobbyTest {
     }
 
     @Test
-    void readyQueueControlsCountdown() {
+    void countdownStartsAndStopsBasedOnPlayerCount() {
         World world = server.addSimpleWorld("world");
         Location center = new Location(world, 0, 80, 0);
 
-        Lobby lobby = new Lobby(center, 2, 4, 5L, "test", DummyMode.class);
+        Lobby lobby = new Lobby(center, 2, 4, 10L, "test", DummyMode.class);
         PlayerMock alice = server.addPlayer("alice");
         PlayerMock bob = server.addPlayer("bob");
 
         assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(alice));
+        assertEquals(Lobby.LobbyState.WAITING, lobby.state(), "Countdown should not run until min players joined");
+
         assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(bob));
-        assertEquals(Material.LIME_DYE, alice.getInventory().getItem(7).getType());
-        assertEquals(Lobby.HotbarAction.QUEUE, Lobby.hotbarAction(alice.getInventory().getItem(7)));
+        assertEquals(Lobby.LobbyState.COUNTDOWN, lobby.state(), "Countdown should begin automatically once min players present");
 
-        assertEquals(Lobby.LobbyState.WAITING, lobby.state());
-        assertTrue(lobby.toggleReady(alice));
-        assertEquals(Lobby.LobbyState.WAITING, lobby.state(), "Countdown should not start until enough players are ready");
-
-        assertTrue(lobby.toggleReady(bob));
-        assertEquals(Lobby.LobbyState.COUNTDOWN, lobby.state(), "Countdown should start once minimum ready players reached");
-
-        assertFalse(lobby.toggleReady(alice));
-        assertEquals(Lobby.LobbyState.WAITING, lobby.state(), "Dropping below min ready players should cancel countdown");
+        lobby.leave(bob);
+        assertEquals(Lobby.LobbyState.WAITING, lobby.state(), "Dropping below min players should cancel countdown");
+        assertEquals(lobby.countdownSeconds(), lobby.countdown().get(), "Countdown should reset after cancellation");
     }
 
     @Test
@@ -162,7 +158,6 @@ class LobbyTest {
         PlayerMock bob = server.addPlayer("bob2");
 
         assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(alice));
-        assertTrue(lobby.toggleReady(alice));
         assertEquals(Lobby.LobbyState.COUNTDOWN, lobby.state());
         long initial = lobby.countdown().get();
 
