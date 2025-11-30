@@ -54,7 +54,7 @@ public class LobbyHotbarListener implements Listener {
 
         Player player = event.getPlayer();
         Lobby lobby = LobbyManager.lobby(player);
-        if (lobby == null) {
+        if (lobby == null || lobby.state() == Lobby.LobbyState.IN_GAME) {
             return;
         }
 
@@ -93,7 +93,7 @@ public class LobbyHotbarListener implements Listener {
     public void onHotbarSwing(@NotNull PlayerAnimationEvent event) {
         Player player = event.getPlayer();
         Lobby lobby = LobbyManager.lobby(player);
-        if (lobby == null) {
+        if (lobby == null || lobby.state() == Lobby.LobbyState.IN_GAME) {
             return;
         }
 
