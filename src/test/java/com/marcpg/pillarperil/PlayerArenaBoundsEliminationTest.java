@@ -1,6 +1,7 @@
 package com.marcpg.pillarperil;
 
 import com.marcpg.libpg.data.time.Time;
+import com.marcpg.pillarperil.PillarPlayer;
 import com.marcpg.pillarperil.game.Game;
 import com.marcpg.pillarperil.game.util.GameInfo;
 import com.marcpg.pillarperil.generation.generator.CircularPillarGen;
@@ -44,11 +45,11 @@ class PlayerArenaBoundsEliminationTest {
     @Test
     void movingOutsideArenaBoundsEliminatesPlayer() throws Exception {
         World world = server.addSimpleWorld("world");
-        Location center = new Location(world, 0, 80, 0);
+        Location center = new Location(world, 0, 10, 0);
 
-        // Set arena bounds around the origin.
+        // Set arena bounds around the origin, with a safe Y range for MockBukkit.
         Location min = new Location(world, -10, 0, -10);
-        Location max = new Location(world, 10, 255, 10);
+        Location max = new Location(world, 10, 50, 10);
         setArenaBounds(min, max);
 
         PlayerMock a = server.addPlayer("A");
@@ -62,12 +63,12 @@ class PlayerArenaBoundsEliminationTest {
         PlayerEvents listener = new PlayerEvents();
 
         // Move player A inside bounds: should remain in the game.
-        Location inside = new Location(world, 0, 80, 0);
+        Location inside = new Location(world, 0, 10, 0);
         listener.onPlayerMove(new PlayerMoveEvent(a, center, inside));
         assertEquals(2, game.players().size(), "Moving inside bounds should not eliminate the player");
 
         // Move player A outside bounds: should be eliminated from the game.
-        Location outside = new Location(world, 20, 80, 0);
+        Location outside = new Location(world, 20, 10, 0);
         listener.onPlayerMove(new PlayerMoveEvent(a, inside, outside));
         assertEquals(1, game.players().size(), "Moving outside bounds should eliminate the player");
     }
@@ -103,6 +104,11 @@ class PlayerArenaBoundsEliminationTest {
         public GameInfo info() {
             return INFO;
         }
+
+        @Override
+        public void eliminate(PillarPlayer player) {
+            // For this test, avoid scheduler and full end logic; just remove the player.
+            players().remove(player);
+        }
     }
 }
-
