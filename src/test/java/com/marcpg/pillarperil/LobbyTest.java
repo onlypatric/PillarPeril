@@ -129,27 +129,44 @@ class LobbyTest {
     }
 
     @Test
-    void countdownStartsAndStopsBasedOnPlayerCount() {
+    void countdownKeepsRunningWhenPlayersLeaveOrJoin() {
         World world = server.addSimpleWorld("world");
         Location center = new Location(world, 0, 80, 0);
 
         Lobby lobby = new Lobby(center, 2, 4, 10L, "test", DummyMode.class);
         PlayerMock alice = server.addPlayer("alice");
         PlayerMock bob = server.addPlayer("bob");
+        PlayerMock charlie = server.addPlayer("charlie");
 
         assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(alice));
         assertEquals(Lobby.LobbyState.WAITING, lobby.state(), "Countdown should not run until min players joined");
 
         assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(bob));
         assertEquals(Lobby.LobbyState.COUNTDOWN, lobby.state(), "Countdown should begin automatically once min players present");
+        long initialCountdown = lobby.countdown().get();
 
+        // Simulate some countdown progress
+        lobby.tick(0);
+        lobby.tick(20);
+        assertTrue(lobby.countdown().get() < initialCountdown, "Countdown should have progressed");
+
+        // A player leaving during countdown should NOT cancel it.
         lobby.leave(bob);
-        assertEquals(Lobby.LobbyState.WAITING, lobby.state(), "Dropping below min players should cancel countdown");
-        assertEquals(lobby.countdownSeconds(), lobby.countdown().get(), "Countdown should reset after cancellation");
+        assertEquals(Lobby.LobbyState.COUNTDOWN, lobby.state(), "Countdown should continue even if players leave");
+
+        long afterLeave = lobby.countdown().get();
+        lobby.tick(40);
+        assertTrue(lobby.countdown().get() < afterLeave, "Countdown should keep progressing after a player leaves");
+
+        // A new player joining during countdown should NOT reset it.
+        assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(charlie));
+        long afterJoin = lobby.countdown().get();
+        lobby.tick(60);
+        assertTrue(lobby.countdown().get() < afterJoin, "Countdown should keep progressing after a new player joins");
     }
 
     @Test
-    void countdownResetsWhenPlayerJoinsDuringCountdown() {
+    void countdownDoesNotResetWhenPlayerJoinsDuringCountdown() {
         World world = server.addSimpleWorld("world");
         Location center = new Location(world, 0, 80, 0);
 
@@ -161,11 +178,14 @@ class LobbyTest {
         assertEquals(Lobby.LobbyState.COUNTDOWN, lobby.state());
         long initial = lobby.countdown().get();
 
-        lobby.tick(0); // decrement countdown once
+        lobby.tick(0); // allow countdown logic
+        lobby.tick(20); // decrement countdown once
         assertTrue(lobby.countdown().get() < initial, "Countdown should have progressed");
 
+        long beforeJoin = lobby.countdown().get();
         assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(bob));
-        assertEquals(lobby.countdownSeconds(), lobby.countdown().get(), "Countdown should reset when a new player joins during countdown");
+        assertEquals(Lobby.LobbyState.COUNTDOWN, lobby.state(), "Countdown should remain in progress when a new player joins");
+        assertEquals(beforeJoin, lobby.countdown().get(), "Countdown should not reset when a new player joins during countdown");
     }
 
     public static class DummyMode extends Game {

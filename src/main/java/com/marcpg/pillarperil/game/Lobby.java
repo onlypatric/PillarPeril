@@ -177,12 +177,6 @@ public class Lobby {
         if (players.size() >= maxPlayers) return JoinResult.FULL;
 
         players.add(player);
-        if (state == LobbyState.COUNTDOWN) {
-            countdown = new Time(countdownSeconds);
-            for (Player lobbyPlayer : players) {
-                lobbyPlayer.sendMessage(Translation.component(lobbyPlayer.locale(), "games.lobby.countdown.reset", countdown.getOneUnitFormatted()));
-            }
-        }
         player.teleport(waitingSpawn());
         applyHotbar(player);
         updateScoreboards();
@@ -199,7 +193,11 @@ public class Lobby {
         restoreInventory(player, true);
         updateStartItemsForAll();
         updateScoreboards();
-        evaluatePlayerThresholds();
+        // Do not re-evaluate thresholds while countdown is running;
+        // once started, countdown should ignore joins/leaves.
+        if (state == LobbyState.WAITING) {
+            evaluatePlayerThresholds();
+        }
     }
 
     public void cancel() {
@@ -382,13 +380,6 @@ public class Lobby {
         int activePlayers = players.size();
         if (state == LobbyState.WAITING && activePlayers >= minPlayers) {
             startCountdown();
-        } else if (state == LobbyState.COUNTDOWN && activePlayers < minPlayers) {
-            state = LobbyState.WAITING;
-            countdown = new Time(countdownSeconds);
-            for (Player player : players) {
-                player.sendMessage(Translation.component(player.locale(), "games.lobby.countdown.cancelled", minPlayers));
-            }
-            updateStartItemsForAll();
         }
     }
 

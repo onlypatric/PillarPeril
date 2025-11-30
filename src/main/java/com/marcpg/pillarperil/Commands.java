@@ -325,6 +325,22 @@ public class Commands {
                                 )
                         )
                 )
+                .then(LiteralArgumentBuilder.<CommandSourceStack>literal("reload-config")
+                        .requires(source -> source.getSender().hasPermission("pillarperil.reload"))
+                        .executes(context -> {
+                            CommandSender source = context.getSource().getSender();
+                            Locale l = PillarPeril.locale(source);
+
+                            // End all running games as a draw before applying new settings.
+                            java.util.List.copyOf(GameManager.GAMES)
+                                    .forEach(game -> game.end(Game.EndingCause.DRAW, java.util.List.of()));
+
+                            PillarPeril.reloadCoreConfig();
+
+                            source.sendMessage(Component.text("Pillar Peril configuration reloaded.", NamedTextColor.GREEN));
+                            return 1;
+                        })
+                )
                 .then(LiteralArgumentBuilder.<CommandSourceStack>literal("stop")
                         .requires(source -> source.getSender().hasPermission("pillarperil.stop"))
                         .then(RequiredArgumentBuilder.<CommandSourceStack, String>argument("game", StringArgumentType.word())
@@ -417,6 +433,21 @@ public class Commands {
                                 index++;
                             }
                             source.sendMessage(SEPARATOR_20);
+                            return 1;
+                        })
+                )
+                .then(LiteralArgumentBuilder.<CommandSourceStack>literal("leaderboard-hologram")
+                        .requires(source -> source.getSender().hasPermission("pillarperil.leaderboard.hologram"))
+                        .executes(context -> {
+                            CommandSender source = context.getSource().getSender();
+                            if (!(source instanceof Player player)) {
+                                source.sendMessage(Component.text("Only players can create leaderboard holograms.", NamedTextColor.RED));
+                                return 1;
+                            }
+
+                            Locale l = PillarPeril.locale(source);
+                            com.marcpg.pillarperil.game.util.LeaderboardHologramManager.createOrMove(player);
+                            source.sendMessage(Translation.component(l, "games.leaderboard.hologram.created").color(NamedTextColor.GREEN));
                             return 1;
                         })
                 )

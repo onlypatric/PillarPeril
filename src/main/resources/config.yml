@@ -18,6 +18,11 @@
 # Default: 200
 platform-height: 200
 
+## Default Locale ##
+# The default locale used for fallback translations and non-player audiences.
+# Format: language_COUNTRY (for example: en_US or it_IT).
+locale: en_US
+
 
 ## Max Fall Distance ##
 # The maximum distance you can fall from the pillars until you die.

@@ -12,6 +12,7 @@ import com.marcpg.pillarperil.game.util.GameManager;
 import com.marcpg.pillarperil.game.util.StatsManager;
 import com.marcpg.pillarperil.game.util.LobbyStorage;
 import com.marcpg.pillarperil.game.util.LobbyManager;
+import com.marcpg.pillarperil.game.util.LeaderboardHologramManager;
 import com.marcpg.pillarperil.generation.Generator;
 import com.marcpg.pillarperil.generation.Platform;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
@@ -45,12 +46,13 @@ public class PillarPeril extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        Locale.setDefault(Locale.of("en", "US"));
         saveDefaultConfig();
 
         PLUGIN = this;
         LOG = getSLF4JLogger();
         CONFIG = getConfig();
+
+        Locale.setDefault(parseLocale(CONFIG.getString("locale", "en_US")));
 
         try {
             translations();
@@ -73,6 +75,7 @@ public class PillarPeril extends JavaPlugin {
         loadArenaBounds();
         StatsManager.load(getDataFolder());
         LobbyStorage.loadAll(getDataFolder());
+        LeaderboardHologramManager.startAutoUpdate();
     }
 
     @Override
@@ -83,6 +86,7 @@ public class PillarPeril extends JavaPlugin {
         LobbyManager.LOBBIES.forEach(lobby -> List.copyOf(lobby.players()).forEach(lobby::leave));
         LobbyStorage.saveAll(getDataFolder());
         StatsManager.save(getDataFolder());
+        LeaderboardHologramManager.clear();
     }
 
     void translations() throws IOException {
@@ -96,7 +100,48 @@ public class PillarPeril extends JavaPlugin {
             Properties properties = new Properties();
             properties.load(this.getClassLoader().getResourceAsStream("en_US.properties"));
             Translation.loadSingleProperties(Locale.getDefault(), properties);
+
+            // Also load built-in Italian translations if present.
+            try {
+                Properties it = new Properties();
+                var stream = this.getClassLoader().getResourceAsStream("it_IT.properties");
+                if (stream != null) {
+                    it.load(stream);
+                    Translation.loadSingleProperties(Locale.of("it", "IT"), it);
+                }
+            } catch (Exception ignored) {
+                // If Italian resources fail to load, we still have English.
+            }
         }
+    }
+
+    public static void reloadCoreConfig() {
+        if (PLUGIN == null) {
+            return;
+        }
+
+        PLUGIN.reloadConfig();
+        CONFIG = PLUGIN.getConfig();
+
+        Locale.setDefault(parseLocale(CONFIG.getString("locale", "en_US")));
+
+        Platform.platformHeight = CONFIG.getInt("platform-height");
+        Platform.deathHeight = Platform.platformHeight - CONFIG.getInt("max-fall");
+        Generator.platformDistanceFactor = CONFIG.getDouble("platform-distance-factor");
+
+        END_SPAWN = PLUGIN.loadEndSpawn();
+        PLUGIN.loadArenaBounds();
+    }
+
+    private static Locale parseLocale(String value) {
+        if (value == null || value.isBlank()) {
+            return Locale.of("en", "US");
+        }
+        String[] parts = value.split("[_\\-]");
+        if (parts.length == 1) {
+            return Locale.of(parts[0]);
+        }
+        return Locale.of(parts[0], parts[1]);
     }
 
     public static Locale locale(Audience a) {
