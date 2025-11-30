@@ -68,6 +68,11 @@ public class Commands {
                                                                         return 1;
                                                                     }
 
+                                                                    if (players.size() < 2) {
+                                                                        source.sendMessage(Translation.component(l, "games.start.not_enough_players").color(NamedTextColor.RED));
+                                                                        return 1;
+                                                                    }
+
                                                                     if (MODES.containsKey(mode)) {
                                                                         try {
                                                                             MODES.get(mode).getConstructor(Location.class, int.class, List.class).newInstance(center, Bukkit.getCurrentTick(), players);

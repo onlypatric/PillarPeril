@@ -52,10 +52,12 @@ class LobbyHotbarListenerTest {
         World world = server.addSimpleWorld("world_start");
         Location center = new Location(world, 0, 80, 0);
 
-        Lobby lobby = new Lobby(center, 1, 4, 5L, "test", DummyMode.class);
+        Lobby lobby = new Lobby(center, 2, 4, 5L, "test", DummyMode.class);
         PlayerMock player = server.addPlayer("HotbarStart");
+        PlayerMock other = server.addPlayer("HotbarStartFriend");
         player.setOp(true);
         assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(player));
+        assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(other));
 
         ItemStack startItem = player.getInventory().getItem(4);
         assertNotNull(startItem, "Start item not applied to player");
@@ -76,10 +78,12 @@ class LobbyHotbarListenerTest {
         World world = server.addSimpleWorld("world_start_air");
         Location center = new Location(world, 0, 80, 0);
 
-        Lobby lobby = new Lobby(center, 1, 4, 5L, "test", DummyMode.class);
+        Lobby lobby = new Lobby(center, 2, 4, 5L, "test", DummyMode.class);
         PlayerMock player = server.addPlayer("AirClicker");
+        PlayerMock other = server.addPlayer("AirClickerFriend");
         player.setOp(true);
         assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(player));
+        assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(other));
 
         // Simulate an interaction where Bukkit reports null for the item (e.g., left-click air)
         PlayerInteractEvent event = new PlayerInteractEvent(player, Action.LEFT_CLICK_AIR, null, null, BlockFace.SELF);
@@ -98,9 +102,11 @@ class LobbyHotbarListenerTest {
         World world = server.addSimpleWorld("world_no_perm");
         Location center = new Location(world, 0, 80, 0);
 
-        Lobby lobby = new Lobby(center, 1, 4, 5L, "test", DummyMode.class);
+        Lobby lobby = new Lobby(center, 2, 4, 5L, "test", DummyMode.class);
         PlayerMock player = server.addPlayer("NoPermStart");
+        PlayerMock other = server.addPlayer("NoPermFriend");
         assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(player));
+        assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(other));
 
         ItemStack startItem = player.getInventory().getItem(4);
         assertNotNull(startItem, "Start item missing from inventory");
@@ -119,9 +125,11 @@ class LobbyHotbarListenerTest {
         World world = server.addSimpleWorld("world_post_game");
         Location center = new Location(world, 0, 80, 0);
 
-        Lobby lobby = new Lobby(center, 1, 4, 5L, "test", DummyMode.class);
+        Lobby lobby = new Lobby(center, 2, 4, 5L, "test", DummyMode.class);
         PlayerMock player = server.addPlayer("PostGameHotbar");
+        PlayerMock other = server.addPlayer("PostGameFriend");
         assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(player));
+        assertEquals(Lobby.JoinResult.SUCCESS, lobby.join(other));
 
         lobby.forceStart();
         assertEquals(Lobby.LobbyState.IN_GAME, lobby.state());

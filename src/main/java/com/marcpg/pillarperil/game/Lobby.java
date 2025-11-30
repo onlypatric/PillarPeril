@@ -266,6 +266,10 @@ public class Lobby {
     }
 
     private void startGame() {
+        // Do not start games with fewer than 2 players.
+        if (players.size() < 2) {
+            return;
+        }
         if (players.isEmpty() || currentGame != null || state == LobbyState.DISABLED) {
             return;
         }
