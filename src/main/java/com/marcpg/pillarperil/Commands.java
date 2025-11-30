@@ -300,6 +300,31 @@ public class Commands {
                             return 1;
                         })
                 )
+                .then(LiteralArgumentBuilder.<CommandSourceStack>literal("set-arena-bounds")
+                        .requires(source -> source.getSender().hasPermission("pillarperil.arena.setbounds"))
+                        .then(RequiredArgumentBuilder.<CommandSourceStack, World>argument("world", ArgumentTypes.world())
+                                .then(RequiredArgumentBuilder.<CommandSourceStack, BlockPositionResolver>argument("min", ArgumentTypes.blockPosition())
+                                        .then(RequiredArgumentBuilder.<CommandSourceStack, BlockPositionResolver>argument("max", ArgumentTypes.blockPosition())
+                                                .executes(context -> {
+                                                    CommandSender source = context.getSource().getSender();
+                                                    Locale l = PillarPeril.locale(source);
+
+                                                    World world = context.getArgument("world", World.class);
+                                                    BlockPosition minPos = context.getArgument("min", BlockPositionResolver.class).resolve(context.getSource());
+                                                    BlockPosition maxPos = context.getArgument("max", BlockPositionResolver.class).resolve(context.getSource());
+
+                                                    Location min = minPos.toLocation(world);
+                                                    Location max = maxPos.toLocation(world);
+
+                                                    PillarPeril.setArenaBounds(min, max);
+
+                                                    source.sendMessage(Translation.component(l, "games.arena.set-bounds").color(NamedTextColor.GREEN));
+                                                    return 1;
+                                                })
+                                        )
+                                )
+                        )
+                )
                 .then(LiteralArgumentBuilder.<CommandSourceStack>literal("stop")
                         .requires(source -> source.getSender().hasPermission("pillarperil.stop"))
                         .then(RequiredArgumentBuilder.<CommandSourceStack, String>argument("game", StringArgumentType.word())

@@ -58,6 +58,22 @@ public abstract class Game {
                 .peek(this.initialPlayers::add)
                 .forEach(this.players::add);
 
+        // Ensure no lobby hotbar items are carried into the game.
+        for (PillarPlayer p : this.initialPlayers) {
+            org.bukkit.inventory.PlayerInventory inv = p.player.getInventory();
+            org.bukkit.inventory.ItemStack[] contents = inv.getContents();
+            for (int i = 0; i < contents.length; i++) {
+                if (Lobby.hotbarAction(contents[i]) != null) {
+                    contents[i] = null;
+                }
+            }
+            inv.setContents(contents);
+            org.bukkit.inventory.ItemStack offhand = inv.getItemInOffHand();
+            if (Lobby.hotbarAction(offhand) != null) {
+                inv.setItemInOffHand(null);
+            }
+        }
+
         this.initialAudience = Audience.audience(initialPlayers);
         //noinspection removal
         this.items = Arrays.stream(Material.values())
@@ -73,6 +89,8 @@ public abstract class Game {
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
+
+        PillarPeril.applyArenaBarriers(this.world);
 
         GameManager.GAMES.add(this);
     }
@@ -237,6 +255,7 @@ public abstract class Game {
         GameManager.GAMES.remove(this);
         initialPlayers.forEach(PillarPlayer::clean);
         initialBlocks.forEach((location, blockData) -> location.getBlock().setBlockData(blockData));
+        PillarPeril.clearArena(world);
     }
 
     public static boolean hasUse(@NotNull Material m) {

@@ -40,6 +40,8 @@ public class PillarPeril extends JavaPlugin {
     public static Logger LOG;
     public static FileConfiguration CONFIG;
     private static Location END_SPAWN;
+    private static Location ARENA_MIN;
+    private static Location ARENA_MAX;
 
     @Override
     public void onEnable() {
@@ -68,6 +70,7 @@ public class PillarPeril extends JavaPlugin {
         Generator.platformDistanceFactor = CONFIG.getDouble("platform-distance-factor");
 
         END_SPAWN = loadEndSpawn();
+        loadArenaBounds();
         StatsManager.load(getDataFolder());
         LobbyStorage.loadAll(getDataFolder());
     }
@@ -129,5 +132,119 @@ public class PillarPeril extends JavaPlugin {
             return END_SPAWN.clone();
         }
         return fallbackWorld.getSpawnLocation();
+    }
+
+    private void loadArenaBounds() {
+        String worldName = CONFIG.getString("arena-bounds.world");
+        World world = worldName != null ? Bukkit.getWorld(worldName) : null;
+        if (world == null) {
+            ARENA_MIN = null;
+            ARENA_MAX = null;
+            return;
+        }
+
+        int minX = CONFIG.getInt("arena-bounds.min.x");
+        int minY = CONFIG.getInt("arena-bounds.min.y");
+        int minZ = CONFIG.getInt("arena-bounds.min.z");
+        int maxX = CONFIG.getInt("arena-bounds.max.x");
+        int maxY = CONFIG.getInt("arena-bounds.max.y");
+        int maxZ = CONFIG.getInt("arena-bounds.max.z");
+
+        ARENA_MIN = new Location(world, Math.min(minX, maxX), Math.min(minY, maxY), Math.min(minZ, maxZ));
+        ARENA_MAX = new Location(world, Math.max(minX, maxX), Math.max(minY, maxY), Math.max(minZ, maxZ));
+    }
+
+    public static Location arenaMin() {
+        return ARENA_MIN == null ? null : ARENA_MIN.clone();
+    }
+
+    public static Location arenaMax() {
+        return ARENA_MAX == null ? null : ARENA_MAX.clone();
+    }
+
+    public static void setArenaBounds(Location min, Location max) {
+        if (min == null || max == null || min.getWorld() == null || max.getWorld() == null) {
+            ARENA_MIN = null;
+            ARENA_MAX = null;
+            return;
+        }
+
+        if (!min.getWorld().equals(max.getWorld())) {
+            throw new IllegalArgumentException("Arena bounds must be in the same world");
+        }
+
+        World world = min.getWorld();
+        int minX = Math.min(min.getBlockX(), max.getBlockX());
+        int minY = Math.min(min.getBlockY(), max.getBlockY());
+        int minZ = Math.min(min.getBlockZ(), max.getBlockZ());
+        int maxX = Math.max(min.getBlockX(), max.getBlockX());
+        int maxY = Math.max(min.getBlockY(), max.getBlockY());
+        int maxZ = Math.max(min.getBlockZ(), max.getBlockZ());
+
+        ARENA_MIN = new Location(world, minX, minY, minZ);
+        ARENA_MAX = new Location(world, maxX, maxY, maxZ);
+
+        CONFIG.set("arena-bounds.world", world.getName());
+        CONFIG.set("arena-bounds.min.x", minX);
+        CONFIG.set("arena-bounds.min.y", minY);
+        CONFIG.set("arena-bounds.min.z", minZ);
+        CONFIG.set("arena-bounds.max.x", maxX);
+        CONFIG.set("arena-bounds.max.y", maxY);
+        CONFIG.set("arena-bounds.max.z", maxZ);
+        PLUGIN.saveConfig();
+    }
+
+    public static void applyArenaBarriers(World world) {
+        if (ARENA_MIN == null || ARENA_MAX == null) return;
+        if (!ARENA_MIN.getWorld().equals(world)) return;
+
+        int minX = Math.min(ARENA_MIN.getBlockX(), ARENA_MAX.getBlockX());
+        int minY = Math.min(ARENA_MIN.getBlockY(), ARENA_MAX.getBlockY());
+        int minZ = Math.min(ARENA_MIN.getBlockZ(), ARENA_MAX.getBlockZ());
+        int maxX = Math.max(ARENA_MIN.getBlockX(), ARENA_MAX.getBlockX());
+        int maxY = Math.max(ARENA_MIN.getBlockY(), ARENA_MAX.getBlockY());
+        int maxZ = Math.max(ARENA_MIN.getBlockZ(), ARENA_MAX.getBlockZ());
+
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y <= maxY; y++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    boolean isBoundary = x == minX || x == maxX || y == minY || y == maxY || z == minZ || z == maxZ;
+                    if (!isBoundary) continue;
+                    world.getBlockAt(x, y, z).setType(org.bukkit.Material.BARRIER, false);
+                }
+            }
+        }
+    }
+
+    public static void clearArena(World world) {
+        if (ARENA_MIN == null || ARENA_MAX == null) return;
+        if (!ARENA_MIN.getWorld().equals(world)) return;
+
+        int minX = Math.min(ARENA_MIN.getBlockX(), ARENA_MAX.getBlockX());
+        int minY = Math.min(ARENA_MIN.getBlockY(), ARENA_MAX.getBlockY());
+        int minZ = Math.min(ARENA_MIN.getBlockZ(), ARENA_MAX.getBlockZ());
+        int maxX = Math.max(ARENA_MIN.getBlockX(), ARENA_MAX.getBlockX());
+        int maxY = Math.max(ARENA_MIN.getBlockY(), ARENA_MAX.getBlockY());
+        int maxZ = Math.max(ARENA_MIN.getBlockZ(), ARENA_MAX.getBlockZ());
+
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y <= maxY; y++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    world.getBlockAt(x, y, z).setType(org.bukkit.Material.AIR, false);
+                }
+            }
+        }
+
+        world.getEntities().stream()
+                .filter(entity -> !(entity instanceof Player))
+                .filter(entity -> {
+                    Location loc = entity.getLocation();
+                    if (!loc.getWorld().equals(world)) return false;
+                    int ex = loc.getBlockX();
+                    int ey = loc.getBlockY();
+                    int ez = loc.getBlockZ();
+                    return ex >= minX && ex <= maxX && ey >= minY && ey <= maxY && ez >= minZ && ez <= maxZ;
+                })
+                .forEach(org.bukkit.entity.Entity::remove);
     }
 }

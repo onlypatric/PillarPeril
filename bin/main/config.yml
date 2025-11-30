@@ -41,6 +41,20 @@ end-spawn:
   yaw: 0.0
   pitch: 0.0
 
+## Arena Bounds ##
+# Cuboid region used to constrain games and to clean up after they end.
+# These values can be changed via the /games set-arena-bounds command.
+arena-bounds:
+  world: world
+  min:
+    x: -50
+    y: 0
+    z: -50
+  max:
+    x: 50
+    y: 255
+    z: 50
+
 
 ## Default Game Modes ##
 # Allows you to configure various properties of the default game modes.
