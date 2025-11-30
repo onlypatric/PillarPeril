@@ -10,6 +10,7 @@ import com.marcpg.pillarperil.generation.Platform;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.jetbrains.annotations.NotNull;
@@ -37,6 +38,18 @@ public class PlayerEvents implements Listener {
         }
 
         game.eliminate(player);
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onPlayerRespawn(@NotNull PlayerRespawnEvent event) {
+        Game game = GameManager.game(event.getPlayer(), false);
+        if (game == null) {
+            return;
+        }
+
+        // Always respawn players participating in a game at the game center,
+        // ignoring any bed or anchor spawn they might have set elsewhere.
+        event.setRespawnLocation(game.center);
     }
 
     @EventHandler(ignoreCancelled = true)
