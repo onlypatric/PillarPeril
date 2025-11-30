@@ -34,28 +34,34 @@ class PillarPerilArenaBoundsTest {
     void appliesBarriersOnLargeAreaBoundariesOnly() throws Exception {
         World world = server.addSimpleWorld("world");
 
-        // 80x80 area in X/Z, small height range in Y to keep the test fast.
-        Location min = new Location(world, 0, 64, 0);
-        Location max = new Location(world, 79, 66, 79);
+        // 80x80 area in X/Z, taller height range in Y so we have a true interior.
+        Location min = new Location(world, 0, 60, 0);
+        Location max = new Location(world, 79, 80, 79);
         setArenaBounds(min, max);
 
         // Sanity: interior starts as air.
-        Location interior = new Location(world, 40, 65, 40);
+        Location interior = new Location(world, 40, 70, 40);
         assertEquals(Material.AIR, interior.getBlock().getType());
 
         PillarPeril.applyArenaBarriers(world);
 
         // Corners and edges become barriers.
-        assertEquals(Material.BARRIER, world.getBlockAt(0, 64, 0).getType());
-        assertEquals(Material.BARRIER, world.getBlockAt(79, 64, 0).getType());
-        assertEquals(Material.BARRIER, world.getBlockAt(0, 66, 79).getType());
-        assertEquals(Material.BARRIER, world.getBlockAt(79, 66, 79).getType());
+        assertEquals(Material.BARRIER, world.getBlockAt(0, 60, 0).getType());
+        assertEquals(Material.BARRIER, world.getBlockAt(79, 60, 0).getType());
+        assertEquals(Material.BARRIER, world.getBlockAt(0, 80, 79).getType());
+        assertEquals(Material.BARRIER, world.getBlockAt(79, 80, 79).getType());
 
         // Some mid-edge samples.
-        assertEquals(Material.BARRIER, world.getBlockAt(0, 65, 40).getType());
-        assertEquals(Material.BARRIER, world.getBlockAt(40, 65, 0).getType());
-        assertEquals(Material.BARRIER, world.getBlockAt(79, 65, 40).getType());
-        assertEquals(Material.BARRIER, world.getBlockAt(40, 65, 79).getType());
+        assertEquals(Material.BARRIER, world.getBlockAt(0, 70, 40).getType());
+        assertEquals(Material.BARRIER, world.getBlockAt(40, 70, 0).getType());
+        assertEquals(Material.BARRIER, world.getBlockAt(79, 70, 40).getType());
+        assertEquals(Material.BARRIER, world.getBlockAt(40, 70, 79).getType());
+
+        // Two blocks inward from a face should still be barrier (3-block-thick boundary).
+        assertEquals(Material.BARRIER, world.getBlockAt(2, 70, 40).getType());
+        assertEquals(Material.BARRIER, world.getBlockAt(40, 70, 2).getType());
+        assertEquals(Material.BARRIER, world.getBlockAt(77, 70, 40).getType());
+        assertEquals(Material.BARRIER, world.getBlockAt(40, 70, 77).getType());
 
         // Interior remains non-barrier (air).
         assertEquals(Material.AIR, interior.getBlock().getType());
@@ -109,4 +115,3 @@ class PillarPerilArenaBoundsTest {
         maxField.set(null, max);
     }
 }
-

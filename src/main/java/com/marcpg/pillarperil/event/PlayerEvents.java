@@ -1,5 +1,6 @@
 package com.marcpg.pillarperil.event;
 
+import com.marcpg.pillarperil.PillarPeril;
 import com.marcpg.pillarperil.PillarPlayer;
 import com.marcpg.pillarperil.game.Game;
 import com.marcpg.pillarperil.game.Lobby;
@@ -7,6 +8,8 @@ import com.marcpg.pillarperil.game.util.GameManager;
 import com.marcpg.pillarperil.game.util.LobbyManager;
 import com.marcpg.pillarperil.game.util.StatsManager;
 import com.marcpg.pillarperil.generation.Platform;
+import org.bukkit.Location;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
@@ -54,10 +57,48 @@ public class PlayerEvents implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onPlayerMove(@NotNull PlayerMoveEvent event) {
+        Player bukkitPlayer = event.getPlayer();
+        Game game = GameManager.game(bukkitPlayer, true);
+        if (game == null) {
+            return;
+        }
+
         if (event.getTo().y() < Platform.deathHeight) {
-            Game game = GameManager.game(event.getPlayer(), true);
-            if (game != null)
-                event.getPlayer().setHealth(0.0);
+            bukkitPlayer.setHealth(0.0);
+            return;
+        }
+
+        Location min = PillarPeril.arenaMin();
+        Location max = PillarPeril.arenaMax();
+        if (min == null || max == null) {
+            return;
+        }
+        if (!min.getWorld().equals(bukkitPlayer.getWorld())) {
+            return;
+        }
+
+        int minX = Math.min(min.getBlockX(), max.getBlockX());
+        int minY = Math.min(min.getBlockY(), max.getBlockY());
+        int minZ = Math.min(min.getBlockZ(), max.getBlockZ());
+        int maxX = Math.max(min.getBlockX(), max.getBlockX());
+        int maxY = Math.max(min.getBlockY(), max.getBlockY());
+        int maxZ = Math.max(min.getBlockZ(), max.getBlockZ());
+
+        Location to = event.getTo();
+        int x = to.getBlockX();
+        int y = to.getBlockY();
+        int z = to.getBlockZ();
+
+        boolean outside =
+                x < minX || x > maxX ||
+                y < minY || y > maxY ||
+                z < minZ || z > maxZ;
+
+        if (outside) {
+            PillarPlayer pp = game.player(bukkitPlayer, true);
+            if (pp != null) {
+                game.eliminate(pp);
+            }
         }
     }
 

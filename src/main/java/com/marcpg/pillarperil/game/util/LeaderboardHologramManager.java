@@ -27,7 +27,7 @@ public final class LeaderboardHologramManager {
         clear();
 
         double yOffset = 0.0;
-        // Compute total lines: 1 header + LIMIT wins + 1 spacer + 1 header + LIMIT kills.
+        // Compute total lines: 1 header + LIMIT kills + 1 spacer + 1 header + LIMIT wins.
         int totalLines = 1 + LIMIT + 1 + 1 + LIMIT;
         for (int i = 0; i < totalLines; i++) {
             Location lineLoc = base.clone().add(0, yOffset, 0);
@@ -49,29 +49,12 @@ public final class LeaderboardHologramManager {
             return;
         }
 
-        List<StatsManager.PlayerStats> wins = StatsManager.topWins(LIMIT);
         List<StatsManager.PlayerStats> kills = StatsManager.topKills(LIMIT);
+        List<StatsManager.PlayerStats> wins = StatsManager.topWins(LIMIT);
 
         int index = 0;
 
-        // Wins header
-        HOLOGRAM_LINES.get(index++).customName(Component.text("Top Wins", NamedTextColor.GOLD));
-        // Wins entries
-        for (int i = 0; i < LIMIT; i++) {
-            Component line;
-            if (i < wins.size()) {
-                StatsManager.PlayerStats stats = wins.get(i);
-                line = Component.text((i + 1) + ". " + stats.name() + " - " + stats.wins() + " wins", NamedTextColor.YELLOW);
-            } else {
-                line = Component.empty();
-            }
-            HOLOGRAM_LINES.get(index++).customName(line);
-        }
-
-        // Spacer
-        HOLOGRAM_LINES.get(index++).customName(Component.empty());
-
-        // Kills header
+        // Kills header (displayed first)
         HOLOGRAM_LINES.get(index++).customName(Component.text("Top Kills", NamedTextColor.RED));
         // Kills entries
         for (int i = 0; i < LIMIT; i++) {
@@ -79,6 +62,23 @@ public final class LeaderboardHologramManager {
             if (i < kills.size()) {
                 StatsManager.PlayerStats stats = kills.get(i);
                 line = Component.text((i + 1) + ". " + stats.name() + " - " + stats.kills() + " kills", NamedTextColor.DARK_RED);
+            } else {
+                line = Component.empty();
+            }
+            HOLOGRAM_LINES.get(index++).customName(line);
+        }
+
+        // Spacer between kills and wins sections
+        HOLOGRAM_LINES.get(index++).customName(Component.empty());
+
+        // Wins header (displayed second)
+        HOLOGRAM_LINES.get(index++).customName(Component.text("Top Wins", NamedTextColor.GOLD));
+        // Wins entries
+        for (int i = 0; i < LIMIT; i++) {
+            Component line;
+            if (i < wins.size()) {
+                StatsManager.PlayerStats stats = wins.get(i);
+                line = Component.text((i + 1) + ". " + stats.name() + " - " + stats.wins() + " wins", NamedTextColor.YELLOW);
             } else {
                 line = Component.empty();
             }

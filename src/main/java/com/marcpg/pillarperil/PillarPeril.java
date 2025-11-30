@@ -253,7 +253,11 @@ public class PillarPeril extends JavaPlugin {
         for (int x = minX; x <= maxX; x++) {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
-                    boolean isBoundary = x == minX || x == maxX || y == minY || y == maxY || z == minZ || z == maxZ;
+                    // Make the barrier shell at least 3 blocks thick on all sides.
+                    boolean nearXBoundary = (x - minX) <= 2 || (maxX - x) <= 2;
+                    boolean nearYBoundary = (y - minY) <= 2 || (maxY - y) <= 2;
+                    boolean nearZBoundary = (z - minZ) <= 2 || (maxZ - z) <= 2;
+                    boolean isBoundary = nearXBoundary || nearYBoundary || nearZBoundary;
                     if (!isBoundary) continue;
                     world.getBlockAt(x, y, z).setType(org.bukkit.Material.BARRIER, false);
                 }
